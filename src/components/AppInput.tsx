@@ -82,22 +82,43 @@ export function AppInput({ onStart, isRunning }: AppInputProps) {
         )}
 
         {/* Start Button */}
-        <Button
-          onClick={handleStart}
-          disabled={!canStart}
-          className="w-full"
-          size="lg"
-        >
-          {isRunning ? (
-            <span className="flex items-center gap-2">
-              <span className="animate-spin">⏳</span> 分析中...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              🚀 开始分析
-            </span>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleStart}
+            disabled={!canStart}
+            className="flex-1"
+            size="lg"
+          >
+            {isRunning ? (
+              <span className="flex items-center gap-2">
+                <span className="animate-spin">⏳</span> 分析中...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                🚀 开始分析
+              </span>
+            )}
+          </Button>
+          {!isRunning && (
+            <Button
+              onClick={async () => {
+                try {
+                  const res = await fetch("/data/sample-reviews.json");
+                  const data = await res.json();
+                  const reviews = data.reviews || data;
+                  onStart("", analysisGoal, Array.isArray(reviews) ? reviews : []);
+                } catch {
+                  // fallback silent
+                }
+              }}
+              variant="outline"
+              size="lg"
+              title="使用内置样例数据快速测试 AI 分析管道"
+            >
+              🧪 快速测试
+            </Button>
           )}
-        </Button>
+        </div>
       </CardContent>
     </Card>
   );
