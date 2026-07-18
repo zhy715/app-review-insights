@@ -1,0 +1,139 @@
+{
+  "reviews": [
+    {
+      "id": "sample-001",
+      "rating": 2,
+      "title": "Subscription too expensive",
+      "content": "The workout plans are great but the subscription is way too expensive compared to other fitness apps. I can't justify $9.99/month when there are similar apps for $4.99.",
+      "author": "FitnessFan22",
+      "date": "2024-06-15T10:30:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-002",
+      "rating": 1,
+      "title": "App crashes during workouts",
+      "content": "Every time I start a workout video, the app crashes after about 5 minutes. This is so frustrating, I've lost my workout progress multiple times. iPhone 14, iOS 17.4.",
+      "author": "YogaLover99",
+      "date": "2024-06-14T08:15:00Z",
+      "version": "3.2.0"
+    },
+    {
+      "id": "sample-003",
+      "rating": 4,
+      "title": "Great variety of workouts",
+      "content": "I really like the variety of workout plans available. The trainers are motivating and the video quality is excellent. Would give 5 stars if there were more beginner-friendly options.",
+      "author": "NewToFitness",
+      "date": "2024-06-13T14:20:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-004",
+      "rating": 1,
+      "title": "Can't cancel subscription",
+      "content": "I've been trying to cancel my subscription for 2 weeks. The cancel button in settings doesn't work, and customer support hasn't responded to my emails. This feels like a scam.",
+      "author": "AngryUser123",
+      "date": "2024-06-12T16:45:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-005",
+      "rating": 3,
+      "title": "Good but needs offline mode",
+      "content": "The workouts are effective and I've seen results in 2 weeks. However, I often exercise in places with poor internet and the app is unusable without a connection. Please add offline downloads!",
+      "author": "TravelFit",
+      "date": "2024-06-11T09:00:00Z",
+      "version": "3.1.9"
+    },
+    {
+      "id": "sample-006",
+      "rating": 2,
+      "title": "Audio out of sync with video",
+      "content": "In several workouts the trainer's audio is 2-3 seconds behind the video. It makes it really hard to follow along. This happens on both WiFi and cellular data.",
+      "author": "TechRunner",
+      "date": "2024-06-10T11:30:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-007",
+      "rating": 5,
+      "title": "Perfect for home workouts",
+      "content": "As a busy mom, this app is perfect. I can do 15-minute workouts while the baby naps. The home gym equipment needed is minimal. Love the weekly challenges!",
+      "author": "BusyMomLife",
+      "date": "2024-06-09T07:00:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-008",
+      "rating": 1,
+      "title": "Charged twice for subscription",
+      "content": "I was charged twice for the annual subscription ($79.99 x 2). Customer support is non-existent. I've disputed the charge with Apple. DO NOT SUBSCRIBE until they fix their billing.",
+      "author": "DoubleCharged",
+      "date": "2024-06-08T20:10:00Z",
+      "version": "3.2.0"
+    },
+    {
+      "id": "sample-009",
+      "rating": 3,
+      "title": "Needs more customization",
+      "content": "The preset workout plans are fine but I wish I could create custom workouts or at least swap out exercises I don't like. Sometimes the recommended weights are way off for my fitness level.",
+      "author": "CustomFitness",
+      "date": "2024-06-07T12:00:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-010",
+      "rating": 4,
+      "title": "Calorie tracking integration needed",
+      "content": "I track my calories in MyFitnessPal and wish this app would sync workout data there. Having to manually log everything is tedious. Otherwise great app with solid workouts.",
+      "author": "DataDrivenFit",
+      "date": "2024-06-06T15:30:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-011",
+      "rating": 1,
+      "title": "Workout timer freezes",
+      "content": "The rest timer between sets keeps freezing. I'll think 30 seconds have passed and it's actually been 3 minutes. Makes interval training impossible. This bug has been there for months.",
+      "author": "IntervalKing",
+      "date": "2024-06-05T06:45:00Z",
+      "version": "3.1.8"
+    },
+    {
+      "id": "sample-012",
+      "rating": 2,
+      "title": "Misleading free trial",
+      "content": "The app says '7-day free trial' but it charged me immediately. When I tried to get a refund, I was told it was in the terms. Very misleading marketing. The workouts themselves are decent.",
+      "author": "TrialTrap",
+      "date": "2024-06-04T18:20:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-013",
+      "rating": 5,
+      "title": "Great results in 30 days",
+      "content": "I've been using this app for 30 days and I can already see real results. The progressive overload system works well. The meal plan suggestions are a nice bonus too.",
+      "author": "ResultsDriven",
+      "date": "2024-06-03T10:00:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-014",
+      "rating": 3,
+      "title": "Needs better Apple Watch support",
+      "content": "The Apple Watch app is basically useless. It only shows heart rate but doesn't track reps, sets, or rest time. I end up having to use my phone anyway, which defeats the purpose.",
+      "author": "WatchUser",
+      "date": "2024-06-02T14:00:00Z",
+      "version": "3.2.0"
+    },
+    {
+      "id": "sample-015",
+      "rating": 2,
+      "title": "Video quality drops randomly",
+      "content": "On a 100Mbps connection, the video quality still drops to what looks like 240p sometimes. Other streaming apps work fine. Seems like a CDN or encoding issue on their end.",
+      "author": "QualityMatters",
+      "date": "2024-06-01T19:30:00Z",
+      "version": "3.2.1"
+    }
+  ]
+}

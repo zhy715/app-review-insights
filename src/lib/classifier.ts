@@ -1,0 +1,113 @@
+import { z } from "zod";
+import { llmCallWithSchema } from "./llm";
+import type { CleanedReview, ReviewClassification } from "./types";
+
+// ============================================================
+// Stage 3: LLM-Driven Review Classification
+// Discovers topics, sentiment, severity per review batch
+// ============================================================
+
+const ClassificationOutputSchema = z.object({
+  classifications: z.array(
+    z.object({
+      reviewId: z.string(),
+      topics: z.array(z.string()).max(10),
+      sentiment: z.enum(["positive", "negative", "neutral", "mixed"]),
+      severity: z
+        .enum(["critical", "major", "minor", "suggestion"])
+        .optional(),
+      featureArea: z.string().max(100).optional(),
+      keyExcerpts: z.array(z.string()).max(3),
+    })
+  ),
+  topicSummary: z.string().describe("1-2 sentence overview of the dominant themes in this batch"),
+});
+
+type ClassificationOutput = z.infer<typeof ClassificationOutputSchema>;
+
+const SYSTEM_PROMPT = `You are a product analyst specializing in mobile app user feedback analysis. Your task is to classify each user review according to the topics it discusses, the overall sentiment, and the severity of any issue raised.
+
+## Instructions:
+1. For each review, identify 1-5 **topics** — these should be specific, concrete features or aspects (e.g., "subscription pricing", "workout video buffering", "in-app purchase bug", "UI navigation", "trainer audio quality"). Use the user's own language where possible.
+2. Assign a **sentiment**: "positive" (user is happy/satisfied), "negative" (user is frustrated/disappointed), "neutral" (factual/balanced), or "mixed" (both praise and criticism).
+3. Assign a **severity** only for negative/mixed reviews: "critical" (app is broken/unusable), "major" (significant problem affecting core use), "minor" (annoyance), "suggestion" (feature request or improvement idea).
+4. Identify the primary **featureArea** (e.g., "workout", "subscription", "onboarding", "settings", "social").
+5. Extract 1-3 **keyExcerpts** — verbatim quotes from the review that best illustrate the user's main point. These MUST be exact text from the review, not paraphrases.
+6. Provide a brief **topicSummary** of the dominant themes across this entire batch.
+
+## Important Rules:
+- Base classifications ONLY on what is explicitly stated in the reviews. Do not infer problems the user did not mention.
+- Topics should be dynamically discovered from the content — do not force reviews into a predefined taxonomy.
+- For non-English reviews, identify topics in English but keep excerpts in the original language.
+- If a review is too short, vague, or nonsensical, classify it with topics: ["unclear"] and sentiment: "neutral".`;
+
+function buildUserPrompt(reviews: CleanedReview[], batchIndex: number, totalBatches: number): string {
+  const reviewText = reviews
+    .map(
+      (r) =>
+        `[ID: ${r.id}] [Rating: ${r.rating}/5] [Version: ${r.version || "N/A"}] [Lang: ${r.language}]\nTitle: ${r.title}\nContent: ${r.normalizedContent}\n---`
+    )
+    .join("\n\n");
+
+  return `Analyze the following batch of user reviews (batch ${batchIndex + 1} of ${totalBatches}).
+
+${reviewText}
+
+Return a JSON object with:
+- "classifications": an array where each element contains the reviewId, discovered topics, sentiment, severity (if applicable), featureArea, and exact key excerpts
+- "topicSummary": a 1-2 sentence overview of the dominant themes in this batch
+
+Ensure all "keyExcerpts" entries are verbatim quotes from the reviews, not your own words.`;
+}
+
+export interface ClassificationResult {
+  classifications: ReviewClassification[];
+  topicSummary: string;
+}
+
+/**
+ * Classify a batch of reviews using LLM
+ */
+export async function classifyReviews(
+  reviews: CleanedReview[],
+  batchSize: number = 25,
+  onProgress?: (batchIndex: number, totalBatches: number) => void
+): Promise<ClassificationResult[]> {
+  const results: ClassificationResult[] = [];
+  const totalBatches = Math.ceil(reviews.length / batchSize);
+
+  for (let i = 0; i < totalBatches; i++) {
+    const batch = reviews.slice(i * batchSize, (i + 1) * batchSize);
+
+    onProgress?.(i, totalBatches);
+
+    const output = await llmCallWithSchema<ClassificationOutput>(
+      {
+        systemPrompt: SYSTEM_PROMPT,
+        userPrompt: buildUserPrompt(batch, i, totalBatches),
+        temperature: 0.15,
+        maxTokens: 4096,
+      },
+      ClassificationOutputSchema
+    );
+
+    // Enrich classifications with missing fields
+    const classifications: ReviewClassification[] = output.classifications.map(
+      (c) => ({
+        reviewId: c.reviewId,
+        topics: c.topics.filter((t) => t !== "unclear"),
+        sentiment: c.sentiment,
+        severity: c.severity,
+        featureArea: c.featureArea,
+        keyExcerpts: c.keyExcerpts,
+      })
+    );
+
+    results.push({
+      classifications,
+      topicSummary: output.topicSummary,
+    });
+  }
+
+  return results;
+}
