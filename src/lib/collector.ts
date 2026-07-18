@@ -2,9 +2,10 @@ import type { RawReview } from "./types";
 import { extractAppId } from "./sse";
 
 // ============================================================
-// App Store RSS Feed Review Collector
-// Uses Apple's official RSS feed (free, no auth required)
-// Max: 10 pages × 50 reviews = 500 reviews per country
+// App Store Review Collector
+// Primary: Apple RSS Feed (free, no auth)
+// Fallback: app-store-scraper (internal amp-api endpoint)
+// Max: 10 pages × 50 reviews = 500 reviews
 // ============================================================
 
 const RSS_BASE_URL = "https://itunes.apple.com";
@@ -110,7 +111,7 @@ export async function fetchAllReviews(
 
       if (reviews.length === 0) {
         emptyPagesCount++;
-        if (emptyPagesCount >= 2) break; // 2 empty pages in a row = no more data
+        if (emptyPagesCount >= 2) break;
         if (page > 1) await delay(DELAY_MS);
         continue;
       }
@@ -118,21 +119,29 @@ export async function fetchAllReviews(
       emptyPagesCount = 0;
       allReviews.push(...reviews);
 
-      // Extract app name from first page's metadata
       if (page === 1 && appName === "") {
         appName = await fetchAppName(appId, country);
       }
 
       onProgress?.(page, allReviews.length);
 
-      // Respect rate limits with delay between pages
       if (page < MAX_PAGES) {
         await delay(DELAY_MS);
       }
     } catch (err) {
-      if (page === 1) throw err; // If first page fails, propagate error
+      if (page === 1) throw err;
       console.warn(`Failed to fetch page ${page}: ${err}`);
-      break; // If subsequent page fails, stop but keep what we have
+      break;
+    }
+  }
+
+  // If RSS returned nothing, fall back to app-store-scraper
+  if (allReviews.length === 0) {
+    console.log("RSS feed returned empty, falling back to app-store-scraper...");
+    const scraperReviews = await fetchWithScraper(appId, country);
+    allReviews.push(...scraperReviews);
+    if (appName === "" && scraperReviews.length > 0) {
+      appName = await fetchAppName(appId, country);
     }
   }
 
@@ -157,4 +166,56 @@ async function fetchAppName(appId: string, country: string): Promise<string> {
     // Ignore — app name is decorative
   }
   return "Unknown App";
+}
+
+/**
+ * Fallback: use app-store-scraper library (internal amp-api endpoint)
+ * This bypasses the RSS feed limitations and works when RSS is rate-limited
+ */
+async function fetchWithScraper(
+  appId: string,
+  country: string = "us"
+): Promise<RawReview[]> {
+  // Dynamic import — avoid loading the heavy library if RSS works
+  const store = await import("app-store-scraper");
+
+  const allReviews: RawReview[] = [];
+  const maxPages = 10;
+
+  for (let page = 1; page <= maxPages; page++) {
+    try {
+      const result = await store.default.reviews({
+        id: appId,
+        country: country,
+        page: page,
+        sort: store.default.sort.RECENT,
+      });
+
+      if (!result || result.length === 0) break;
+
+      for (const entry of result) {
+        allReviews.push({
+          id: String(entry.id || `scraped-${allReviews.length}`),
+          rating: entry.score || 3,
+          title: entry.title || "",
+          content: entry.text || "",
+          author: entry.userName || "Anonymous",
+          date: entry.updated || new Date().toISOString(),
+          version: entry.version || undefined,
+        });
+      }
+
+      // Delay between pages
+      if (page < maxPages && result.length > 0) {
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    } catch (err) {
+      if (page === 1) {
+        console.warn(`app-store-scraper also failed: ${err}`);
+      }
+      break;
+    }
+  }
+
+  return allReviews;
 }
