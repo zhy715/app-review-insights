@@ -9,7 +9,7 @@ function getConfig(): LLMConfig {
   return {
     apiKey: process.env.DEEPSEEK_API_KEY || "",
     baseURL: process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1",
-    model: process.env.DEEPSEEK_MODEL || "deepseek-chat",
+    model: process.env.DEEPSEEK_MODEL || "deepseek-v4-pro",
   };
 }
 
