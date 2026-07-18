@@ -15,7 +15,7 @@ import type { PipelineResults, AnalysisInput } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // 5 minutes timeout
+export const maxDuration = 600; // 10 minutes timeout
 
 export async function POST(req: NextRequest) {
   try {
