@@ -65,7 +65,9 @@ const SYSTEM_PROMPT = `You are a senior product manager writing a PRD (Product R
 - Source reviews should come from the findings' supportingReviewIds.
 - If a finding has weak evidence (low confidence, few reviews), note this and consider lower priority.
 - Acceptance criteria must be measurable and testable.
-- Be specific — "Improve performance" is too vague. "Reduce workout video load time to under 3 seconds" is specific.`;
+- Be specific — "Improve performance" is too vague. "Reduce workout video load time to under 3 seconds" is specific.
+
+Return the PRD as a valid JSON object with the specified schema (requirements array, versionPlan array, executiveSummary).`;
 
 function buildUserPrompt(
   findings: Finding[],

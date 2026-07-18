@@ -37,7 +37,9 @@ const SYSTEM_PROMPT = `You are a product analyst specializing in mobile app user
 - Base classifications ONLY on what is explicitly stated in the reviews. Do not infer problems the user did not mention.
 - Topics should be dynamically discovered from the content — do not force reviews into a predefined taxonomy.
 - For non-English reviews, identify topics in English but keep excerpts in the original language.
-- If a review is too short, vague, or nonsensical, classify it with topics: ["unclear"] and sentiment: "neutral".`;
+- If a review is too short, vague, or nonsensical, classify it with topics: ["unclear"] and sentiment: "neutral".
+
+Return your analysis as a valid JSON object with the specified schema.`;
 
 function buildUserPrompt(reviews: CleanedReview[], batchIndex: number, totalBatches: number): string {
   const reviewText = reviews

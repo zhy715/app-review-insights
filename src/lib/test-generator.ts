@@ -49,7 +49,9 @@ For each requirement, design test cases that verify the acceptance criteria AND 
 - Cover authentication and authorization edge cases for features that require login.
 - Include at least one test case per acceptance criterion.
 - Source reviews should link back to the original user complaints — this proves we're testing the right things.
-- Generate at least 2 test cases per requirement: 1 happy path + 1 edge case minimum.`;
+- Generate at least 2 test cases per requirement: 1 happy path + 1 edge case minimum.
+
+Return the test cases as a valid JSON object with the specified schema.`;
 
 function buildUserPrompt(requirements: Requirement[]): string {
   const reqText = requirements

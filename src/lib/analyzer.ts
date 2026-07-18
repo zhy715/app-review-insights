@@ -64,7 +64,9 @@ const SYSTEM_PROMPT = `You are a senior product manager analyzing aggregated use
 - Group related complaints into a single finding rather than creating one per review.
 - Pay special attention to reviews rated 1-2 stars — they contain the most critical feedback.
 - Consider the analysis goal when prioritizing findings.
-- For reviews in non-English languages, the excerpts stay in the original language but the finding title/description should be in English.`;
+- For reviews in non-English languages, the excerpts stay in the original language but the finding title/description should be in English.
+
+Return your findings as a valid JSON object with the specified schema.`;
 
 function buildUserPrompt(
   classifications: ReviewClassification[],
