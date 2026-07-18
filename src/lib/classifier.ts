@@ -13,10 +13,7 @@ const ClassificationOutputSchema = z.object({
       reviewId: z.union([z.string(), z.number()]).transform(String),
       topics: z.array(z.string()).max(10).default([]),
       sentiment: z.enum(["positive", "negative", "neutral", "mixed"]).default("neutral"),
-      severity: z
-        .enum(["critical", "major", "minor", "suggestion"])
-        .optional()
-        .default("minor"),
+      severity: z.string().optional().default("minor"),
       featureArea: z.string().max(100).optional().default(""),
       keyExcerpts: z.array(z.string()).max(3).default([]),
     })
@@ -67,6 +64,35 @@ export interface ClassificationResult {
 }
 
 /**
+ * Normalize LLM-returned severity strings to our expected enum values.
+ * DeepSeek may return values like "high", "medium", "low" instead of expected values.
+ */
+function normalizeSeverity(
+  raw: string | undefined
+): "critical" | "major" | "minor" | "suggestion" | undefined {
+  if (!raw) return undefined;
+  const s = raw.toLowerCase().trim();
+  const map: Record<string, "critical" | "major" | "minor" | "suggestion"> = {
+    critical: "critical",
+    blocker: "critical",
+    severe: "critical",
+    major: "major",
+    high: "major",
+    significant: "major",
+    important: "major",
+    minor: "minor",
+    medium: "minor",
+    moderate: "minor",
+    low: "minor",
+    suggestion: "suggestion",
+    enhancement: "suggestion",
+    nice_to_have: "suggestion",
+    feature: "suggestion",
+  };
+  return map[s] || "minor";
+}
+
+/**
  * Classify a batch of reviews using LLM
  */
 export async function classifyReviews(
@@ -92,13 +118,13 @@ export async function classifyReviews(
       ClassificationOutputSchema
     );
 
-    // Enrich classifications with missing fields
+    // Enrich classifications — normalize severity values from LLM
     const classifications: ReviewClassification[] = output.classifications.map(
       (c) => ({
         reviewId: c.reviewId,
         topics: c.topics.filter((t) => t !== "unclear"),
         sentiment: c.sentiment,
-        severity: c.severity,
+        severity: normalizeSeverity(c.severity),
         featureArea: c.featureArea,
         keyExcerpts: c.keyExcerpts,
       })

@@ -26,7 +26,7 @@ const FindingsOutputSchema = z.object({
         "content",
         "other",
       ]).default("other"),
-      severity: z.enum(["critical", "major", "minor"]).default("minor"),
+      severity: z.string().default("minor"),
       supportingReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).min(1).default([]),
       supportingExcerpts: z.array(z.string()).min(1).max(5).default([""]),
       conflictingReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).default([]),
@@ -139,6 +139,31 @@ export interface AnalysisResult {
   analysisSummary: string;
 }
 
+/** Normalize LLM severity values to expected enum */
+function normalizeSeverity(
+  raw: string | undefined
+): "critical" | "major" | "minor" {
+  if (!raw) return "minor";
+  const s = raw.toLowerCase().trim();
+  const map: Record<string, "critical" | "major" | "minor"> = {
+    critical: "critical", blocker: "critical", severe: "critical",
+    major: "major", high: "major", significant: "major", important: "major",
+    minor: "minor", medium: "minor", moderate: "minor", low: "minor",
+    suggestion: "minor",
+  };
+  return map[s] || "minor";
+}
+
+/** Normalize LLM category values to expected enum */
+function normalizeCategory(
+  raw: string | undefined
+): Finding["category"] {
+  if (!raw) return "other";
+  const s = raw.toLowerCase().trim().replace(/[^a-z_]/g, "_");
+  const valid = ["bug", "feature_request", "ux_issue", "performance", "pricing", "content", "other"];
+  return valid.includes(s) ? (s as Finding["category"]) : "other";
+}
+
 /**
  * Analyze classified reviews and produce evidence-backed findings
  */
@@ -165,11 +190,13 @@ export async function analyzeFindings(
     FindingsOutputSchema
   );
 
-  // Merge and assign IDs
+  // Merge, normalize, and assign IDs
   const allFindings = [...statisticalFindings, ...output.findings].map(
     (f, i) => ({
       ...f,
       id: generateId("F", i),
+      severity: normalizeSeverity(f.severity),
+      category: normalizeCategory(f.category),
       sampleCount:
         "sampleCount" in f ? f.sampleCount : f.supportingReviewIds.length,
     })
