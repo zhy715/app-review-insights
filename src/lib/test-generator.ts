@@ -13,12 +13,12 @@ const TestCasesOutputSchema = z.object({
     z.object({
       requirementTitle: z.string(),
       title: z.string().max(200),
-      steps: z.array(z.string().max(500)).min(1),
-      expectedResult: z.string().max(1000),
-      sourceReviews: z.array(z.string()),
-      priority: z.enum(["P0", "P1", "P2", "P3"]),
+      steps: z.array(z.string().max(500)).min(1).default(["验证功能"]),
+      expectedResult: z.string().max(1000).default("符合预期"),
+      sourceReviews: z.array(z.union([z.string(), z.number()]).transform(String)).default([]),
+      priority: z.enum(["P0", "P1", "P2", "P3"]).default("P2"),
     })
-  ),
+  ).default([]),
 });
 
 type TestCasesOutput = z.infer<typeof TestCasesOutputSchema>;

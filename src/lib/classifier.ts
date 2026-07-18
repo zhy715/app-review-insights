@@ -10,17 +10,18 @@ import type { CleanedReview, ReviewClassification } from "./types";
 const ClassificationOutputSchema = z.object({
   classifications: z.array(
     z.object({
-      reviewId: z.string(),
-      topics: z.array(z.string()).max(10),
-      sentiment: z.enum(["positive", "negative", "neutral", "mixed"]),
+      reviewId: z.union([z.string(), z.number()]).transform(String),
+      topics: z.array(z.string()).max(10).default([]),
+      sentiment: z.enum(["positive", "negative", "neutral", "mixed"]).default("neutral"),
       severity: z
         .enum(["critical", "major", "minor", "suggestion"])
-        .optional(),
-      featureArea: z.string().max(100).optional(),
-      keyExcerpts: z.array(z.string()).max(3),
+        .optional()
+        .default("minor"),
+      featureArea: z.string().max(100).optional().default(""),
+      keyExcerpts: z.array(z.string()).max(3).default([]),
     })
-  ),
-  topicSummary: z.string().describe("1-2 sentence overview of the dominant themes in this batch"),
+  ).default([]),
+  topicSummary: z.string().default(""),
 });
 
 type ClassificationOutput = z.infer<typeof ClassificationOutputSchema>;

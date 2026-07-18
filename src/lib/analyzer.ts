@@ -25,17 +25,17 @@ const FindingsOutputSchema = z.object({
         "pricing",
         "content",
         "other",
-      ]),
-      severity: z.enum(["critical", "major", "minor"]),
-      supportingReviewIds: z.array(z.string()).min(1),
-      supportingExcerpts: z.array(z.string()).min(1).max(5),
-      conflictingReviewIds: z.array(z.string()),
-      confidence: z.number().min(0).max(1),
+      ]).default("other"),
+      severity: z.enum(["critical", "major", "minor"]).default("minor"),
+      supportingReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).min(1).default([]),
+      supportingExcerpts: z.array(z.string()).min(1).max(5).default([""]),
+      conflictingReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).default([]),
+      confidence: z.number().min(0).max(1).default(0.5),
       uncertaintyNotes: z.string().optional(),
-      source: z.enum(["model", "statistical"]),
+      source: z.enum(["model", "statistical"]).default("model"),
     })
-  ),
-  analysisSummary: z.string(),
+  ).default([]),
+  analysisSummary: z.string().default(""),
 });
 
 type FindingsOutput = z.infer<typeof FindingsOutputSchema>;

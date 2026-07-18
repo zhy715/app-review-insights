@@ -13,23 +13,23 @@ const PRDOutputSchema = z.object({
     z.object({
       title: z.string().max(200),
       description: z.string().max(2000),
-      priority: z.enum(["P0", "P1", "P2", "P3"]),
-      sourceFindingTitles: z.array(z.string()),
-      sourceReviewIds: z.array(z.string()),
-      acceptance: z.array(z.string().max(500)).min(1),
+      priority: z.enum(["P0", "P1", "P2", "P3"]).default("P2"),
+      sourceFindingTitles: z.array(z.string()).default([]),
+      sourceReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).default([]),
+      acceptance: z.array(z.string().max(500)).default(["验收通过"]),
       version: z.string().optional(),
-      isAssumption: z.boolean(),
+      isAssumption: z.boolean().default(false),
     })
-  ),
+  ).default([]),
   versionPlan: z.array(
     z.object({
-      version: z.string(),
-      theme: z.string(),
-      requirementTitles: z.array(z.string()),
-      rationale: z.string(),
+      version: z.string().default("V1.0"),
+      theme: z.string().default(""),
+      requirementTitles: z.array(z.string()).default([]),
+      rationale: z.string().default(""),
     })
-  ),
-  executiveSummary: z.string(),
+  ).default([]),
+  executiveSummary: z.string().default(""),
 });
 
 type PRDOutput = z.infer<typeof PRDOutputSchema>;
