@@ -74,14 +74,15 @@ function buildUserPrompt(
   analysisGoal: string,
   appName: string
 ): string {
-  const findingsText = findings
+  // Limit findings to keep prompt manageable
+  const findingsText = findings.slice(0, 12)
     .map(
       (f) =>
         `[${f.id}] ${f.title}
   Category: ${f.category} | Severity: ${f.severity} | Confidence: ${(f.confidence * 100).toFixed(0)}% | Source: ${f.source}
   Description: ${f.description}
   Supporting Reviews (${f.sampleCount}): ${f.supportingReviewIds.join(", ")}
-  Excerpts: ${f.supportingExcerpts.map((e) => `"${e.slice(0, 200)}"`).join(" | ")}
+  Excerpts: ${f.supportingExcerpts.slice(0, 3).map((e) => `"${e.slice(0, 150)}"`).join(" | ")}
   Conflicts: ${f.conflictingReviewIds.length > 0 ? f.conflictingReviewIds.join(", ") : "None"}
   ${f.uncertaintyNotes ? `Uncertainty: ${f.uncertaintyNotes}` : ""}`
     )

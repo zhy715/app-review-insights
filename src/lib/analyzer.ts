@@ -106,15 +106,17 @@ function buildUserPrompt(
     .map(([topic, count]) => `  - ${topic}: ${count} reviews`)
     .join("\n");
 
-  // Detailed classification data
+  // Detailed classification data — limit to keep prompt within bounds
   const detailedClassifications = classifications
     .filter((c) => c.topics.length > 0 && c.topics[0] !== "unclear")
+    .slice(0, 50) // Max 50 reviews in prompt
     .map((c) => {
       const review = reviewMap.get(c.reviewId);
       const rating = review?.rating || "N/A";
+      const shortExcerpts = c.keyExcerpts.map((e) => e.slice(0, 150));
       return `[${c.reviewId}] Rating: ${rating}/5 | Sentiment: ${c.sentiment} | Severity: ${c.severity || "N/A"} | Area: ${c.featureArea || "N/A"}
   Topics: ${c.topics.join(", ")}
-  Excerpts: ${c.keyExcerpts.map((e) => `"${e}"`).join(" | ")}`;
+  Excerpts: ${shortExcerpts.map((e) => `"${e}"`).join(" | ")}`;
     })
     .join("\n\n---\n\n");
 
@@ -187,7 +189,7 @@ export async function analyzeFindings(
       systemPrompt: SYSTEM_PROMPT,
       userPrompt: buildUserPrompt(classifications, reviews, analysisGoal, appName),
       temperature: 0.15,
-      maxTokens: 16384,
+      maxTokens: 4096,
     },
     FindingsOutputSchema
   );

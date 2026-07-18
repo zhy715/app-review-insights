@@ -45,7 +45,7 @@ function buildUserPrompt(reviews: CleanedReview[], batchIndex: number, totalBatc
   const reviewText = reviews
     .map(
       (r) =>
-        `[ID: ${r.id}] [Rating: ${r.rating}/5] [Version: ${r.version || "N/A"}] [Lang: ${r.language}]\nTitle: ${r.title}\nContent: ${r.normalizedContent}\n---`
+        `[ID: ${r.id}] [Rating: ${r.rating}/5] [Version: ${r.version || "N/A"}] [Lang: ${r.language}]\nTitle: ${r.title}\nContent: ${r.normalizedContent.slice(0, 500)}\n---`
     )
     .join("\n\n");
 
@@ -115,7 +115,7 @@ export async function classifyReviews(
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: buildUserPrompt(batch, i, totalBatches),
         temperature: 0.15,
-        maxTokens: 4096,
+        maxTokens: 2048,
       },
       ClassificationOutputSchema
     );

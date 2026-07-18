@@ -176,7 +176,7 @@ async function runPipeline(jobId: string, input: AnalysisInput) {
 
     // Stage 3: Classify
     updateJob(30, "正在 AI 分类...");
-    const classificationResults = await retryStage(() => classifyReviews(cleanedReviews, 25), "AI 分类");
+    const classificationResults = await retryStage(() => classifyReviews(cleanedReviews, 10), "AI 分类");
     const allClassifications = classificationResults.flatMap((r) => r.classifications);
     results.classifications = allClassifications;
     updateJob(45, `✓ 分类完成: ${allClassifications.length} 条`);
