@@ -16,7 +16,7 @@ const FindingsOutputSchema = z.object({
   findings: z.array(
     z.object({
       title: z.string().max(200),
-      description: z.string().max(1000),
+      description: z.string().max(1000).optional().default(""),
       category: z.enum([
         "bug",
         "feature_request",
@@ -25,14 +25,14 @@ const FindingsOutputSchema = z.object({
         "pricing",
         "content",
         "other",
-      ]).default("other"),
-      severity: z.string().default("minor"),
-      supportingReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).min(1).default([]),
-      supportingExcerpts: z.array(z.string()).min(1).max(5).default([""]),
-      conflictingReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).default([]),
-      confidence: z.number().min(0).max(1).default(0.5),
+      ]).optional().default("other"),
+      severity: z.string().optional().default("minor"),
+      supportingReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).min(1).optional().default([]),
+      supportingExcerpts: z.array(z.string()).min(1).max(5).optional().default([""]),
+      conflictingReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).optional().default([]),
+      confidence: z.number().min(0).max(1).optional().default(0.5),
       uncertaintyNotes: z.string().optional(),
-      source: z.enum(["model", "statistical"]).default("model"),
+      source: z.enum(["model", "statistical"]).optional().default("model"),
     })
   ).default([]),
   analysisSummary: z.string().default(""),

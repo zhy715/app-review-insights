@@ -64,6 +64,26 @@ async function withRetry<T>(
 }
 
 // ============================================================
+// Recursively strip all null values from object (null → undefined)
+// DeepSeek JSON mode often returns null instead of omitting optional fields
+// ============================================================
+function stripNulls(obj: unknown): unknown {
+  if (obj === null) return undefined;
+  if (Array.isArray(obj)) return obj.map(stripNulls);
+  if (typeof obj === "object" && obj !== null) {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+      const cleaned = stripNulls(value);
+      if (cleaned !== undefined) {
+        result[key] = cleaned;
+      }
+    }
+    return result;
+  }
+  return obj;
+}
+
+// ============================================================
 // Core LLM call — sends prompt, returns parsed JSON
 // ============================================================
 export interface LLMCallOptions {
@@ -101,7 +121,8 @@ export async function llmCall<T>(
   }
 
   try {
-    return JSON.parse(rawContent) as T;
+    const parsed = JSON.parse(rawContent);
+    return stripNulls(parsed) as T;
   } catch {
     // Attempt recovery: strip markdown code fences
     const cleaned = rawContent
@@ -110,7 +131,7 @@ export async function llmCall<T>(
       .trim();
     const match = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
     if (match) {
-      return JSON.parse(match[0]) as T;
+      return stripNulls(JSON.parse(match[0])) as T;
     }
     throw new Error(`Failed to parse LLM JSON response: ${rawContent.slice(0, 200)}...`);
   }

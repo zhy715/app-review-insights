@@ -12,24 +12,24 @@ const PRDOutputSchema = z.object({
   requirements: z.array(
     z.object({
       title: z.string().max(200),
-      description: z.string().max(2000),
-      priority: z.enum(["P0", "P1", "P2", "P3"]).default("P2"),
-      sourceFindingTitles: z.array(z.string()).default([]),
-      sourceReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).default([]),
-      acceptance: z.array(z.string().max(500)).default(["验收通过"]),
+      description: z.string().max(2000).optional().default(""),
+      priority: z.enum(["P0", "P1", "P2", "P3"]).optional().default("P2"),
+      sourceFindingTitles: z.array(z.string()).optional().default([]),
+      sourceReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).optional().default([]),
+      acceptance: z.array(z.string().max(500)).optional().default(["验收通过"]),
       version: z.string().optional(),
-      isAssumption: z.boolean().default(false),
+      isAssumption: z.boolean().optional().default(false),
     })
   ).default([]),
   versionPlan: z.array(
     z.object({
-      version: z.string().default("V1.0"),
-      theme: z.string().default(""),
-      requirementTitles: z.array(z.string()).default([]),
-      rationale: z.string().default(""),
+      version: z.string().optional().default("V1.0"),
+      theme: z.string().optional().default(""),
+      requirementTitles: z.array(z.string()).optional().default([]),
+      rationale: z.string().optional().default(""),
     })
-  ).default([]),
-  executiveSummary: z.string().default(""),
+  ).optional().default([]),
+  executiveSummary: z.string().optional().default(""),
 });
 
 type PRDOutput = z.infer<typeof PRDOutputSchema>;
