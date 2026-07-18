@@ -60,10 +60,22 @@ export async function POST(req: NextRequest) {
     }
 
     if (rawReviews.length === 0) {
-      return NextResponse.json(
-        { error: "未找到评论数据" },
-        { status: 404 }
-      );
+      // Ultimate fallback: use built-in sample data
+      try {
+        const fs = await import("fs/promises");
+        const path = await import("path");
+        const samplePath = path.join(process.cwd(), "public/data/sample-reviews.json");
+        const sampleRaw = await fs.readFile(samplePath, "utf-8");
+        const sampleData = JSON.parse(sampleRaw);
+        rawReviews = processImportedReviews(sampleData.reviews || sampleData);
+        appName = "样例数据（Apple 接口暂时不可用）";
+        appId = "sample-fallback";
+      } catch {
+        return NextResponse.json(
+          { error: "未找到评论数据，且样例数据加载失败。请稍后重试或导入 JSON/CSV 数据。" },
+          { status: 404 }
+        );
+      }
     }
 
     results.rawReviews = rawReviews;
