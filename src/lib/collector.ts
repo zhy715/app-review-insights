@@ -135,13 +135,23 @@ export async function fetchAllReviews(
     }
   }
 
-  // If RSS returned nothing, fall back to app-store-scraper
+  // If RSS returned nothing, fall back to app-store-scraper (try multiple regions)
   if (allReviews.length === 0) {
     console.log("RSS feed returned empty, falling back to app-store-scraper...");
-    const scraperReviews = await fetchWithScraper(appId, country);
-    allReviews.push(...scraperReviews);
-    if (appName === "" && scraperReviews.length > 0) {
-      appName = await fetchAppName(appId, country);
+    // Try multiple countries — rate limits are often per-region
+    const countries = [country, "us", "gb", "jp", "cn", "de", "fr"];
+    for (const cc of [...new Set(countries)]) {
+      const scraperReviews = await fetchWithScraper(appId, cc);
+      if (scraperReviews.length > 0) {
+        allReviews.push(...scraperReviews);
+        if (appName === "") {
+          appName = await fetchAppName(appId, country);
+        }
+        console.log(`Got ${scraperReviews.length} reviews from ${cc} region`);
+        break; // Got data, stop trying
+      }
+      // Brief delay before trying next region
+      await new Promise((r) => setTimeout(r, 1000));
     }
   }
 
