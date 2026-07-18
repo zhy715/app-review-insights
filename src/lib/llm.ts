@@ -39,10 +39,16 @@ async function withRetry<T>(
     try {
       return await fn();
     } catch (err: unknown) {
-      const error = err as { status?: number; headers?: Record<string, string> };
+      const error = err as { status?: number; headers?: Record<string, string>; message?: string };
       const status = error.status;
+      const errMsg = error.message || "";
       const isRetryable =
-        status === 429 || (status !== undefined && status >= 500);
+        status === 429 ||
+        (status !== undefined && status >= 500) ||
+        errMsg.includes("terminated") ||
+        errMsg.includes("timeout") ||
+        errMsg.includes("rate") ||
+        errMsg.includes("Service Unavailable");
 
       if (!isRetryable || attempt === maxRetries) {
         throw err;

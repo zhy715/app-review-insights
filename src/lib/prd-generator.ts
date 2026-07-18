@@ -122,7 +122,7 @@ export async function generatePRD(
       systemPrompt: SYSTEM_PROMPT,
       userPrompt: buildUserPrompt(findings, analysisGoal, appName),
       temperature: 0.2,
-      maxTokens: 8192,
+      maxTokens: 4096,
     },
     PRDOutputSchema
   );

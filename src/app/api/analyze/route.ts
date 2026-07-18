@@ -155,28 +155,47 @@ async function runPipeline(jobId: string, input: AnalysisInput) {
     results.cleanedReviews = cleanedReviews;
     updateJob(25, `✓ 清洗完成: ${cleanedReviews.length} 条有效评论`);
 
+    // Helper: retry an LLM stage with backoff
+    const retryStage = async <T>(fn: () => Promise<T>, label: string, maxTries = 3): Promise<T> => {
+      for (let i = 0; i < maxTries; i++) {
+        try {
+          return await fn();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "";
+          if (i < maxTries - 1 && (msg.includes("terminated") || msg.includes("timeout") || msg.includes("rate"))) {
+            const wait = (i + 1) * 5000;
+            updateJob(job.progress, `${label} — 暂时中断，${wait / 1000}s 后重试 (${i + 1}/${maxTries})...`);
+            await new Promise((r) => setTimeout(r, wait));
+            continue;
+          }
+          throw err;
+        }
+      }
+      throw new Error(`${label} 重试耗尽`);
+    };
+
     // Stage 3: Classify
     updateJob(30, "正在 AI 分类...");
-    const classificationResults = await classifyReviews(cleanedReviews, 25);
+    const classificationResults = await retryStage(() => classifyReviews(cleanedReviews, 25), "AI 分类");
     const allClassifications = classificationResults.flatMap((r) => r.classifications);
     results.classifications = allClassifications;
     updateJob(45, `✓ 分类完成: ${allClassifications.length} 条`);
 
     // Stage 4: Analyze
     updateJob(50, "正在 AI 深度分析...");
-    const analysisResult = await analyzeFindings(allClassifications, cleanedReviews, input.analysisGoal || "", appName);
+    const analysisResult = await retryStage(() => analyzeFindings(allClassifications, cleanedReviews, input.analysisGoal || "", appName), "AI 深度分析");
     results.findings = analysisResult.findings;
     updateJob(65, `✓ 发现 ${analysisResult.findings.length} 个问题`);
 
     // Stage 5: PRD
     updateJob(70, "正在生成 PRD...");
-    const prdResult = await generatePRD(analysisResult.findings, input.analysisGoal || "", appName);
+    const prdResult = await retryStage(() => generatePRD(analysisResult.findings, input.analysisGoal || "", appName), "PRD 生成");
     results.requirements = prdResult.requirements;
     updateJob(80, `✓ 生成 ${prdResult.requirements.length} 条需求`);
 
     // Stage 6: Tests
     updateJob(85, "正在生成测试用例...");
-    const testResult = await generateTestCases(prdResult.requirements);
+    const testResult = await retryStage(() => generateTestCases(prdResult.requirements), "测试用例生成");
     results.testCases = testResult.testCases;
     updateJob(92, `✓ 生成 ${testResult.testCases.length} 条用例`);
 
