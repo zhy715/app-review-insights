@@ -23,35 +23,35 @@ const TestCasesOutputSchema = z.object({
 
 type TestCasesOutput = z.infer<typeof TestCasesOutputSchema>;
 
-const SYSTEM_PROMPT = `You are a QA engineer designing test cases for a mobile app PRD. Your test cases must verify that each requirement correctly addresses the user problems identified in the source reviews.
+const SYSTEM_PROMPT = `你是一名 QA 工程师，正在为移动应用 PRD 设计测试用例。你的测试用例必须验证每条需求是否正确地解决了源评论中识别的用户问题。
 
-## Instructions:
-For each requirement, design test cases that verify the acceptance criteria AND confirm the underlying user problems are solved. Use **Gherkin-style** Given/When/Then format for steps.
+## 任务说明：
+为每条需求设计测试用例，验证验收标准并确认底层用户问题已解决。使用 **Gherkin 风格**的 Given/When/Then 格式编写步骤。
 
-## Test Case Types:
-1. **Happy Path**: The feature works correctly under normal conditions
-2. **Edge Case**: Boundary values, empty states, concurrent operations
-3. **Error Path**: What happens when dependencies fail or inputs are invalid
+## 测试用例类型：
+1. **正常路径**: 功能在正常条件下正常工作
+2. **边界情况**: 边界值、空状态、并发操作
+3. **异常路径**: 依赖失败或输入无效时会发生什么
 
-## For each test case, provide:
-- **requirementTitle**: The exact requirement this tests
-- **title**: Descriptive test case name
-- **steps**: Array of Given/When/Then steps. Be CONCRETE — use specific values, not placeholders.
-  - "Given the user is on the subscription page with a 'Monthly Premium' plan priced at $9.99"
-  - NOT "Given the user is on the correct page"
-- **expectedResult**: What the user should see/experience when the test passes
-- **sourceReviews**: IDs of the original user reviews whose problems this test verifies are solved
-- **priority**: Same as the requirement's priority
+## 每条测试用例需提供：
+- **requirementTitle**: 所测试的精确需求标题
+- **title**: 描述性的中文测试用例标题
+- **steps**: Given/When/Then 步骤数组。必须具体——使用具体数值，而非占位符。
+  - 正确："Given 用户在订阅页面，显示'月度高级版'计划价格为 ¥68.00"
+  - 错误："Given 用户在正确的页面"
+- **expectedResult**: 测试通过时用户应看到/体验到的结果，用中文
+- **sourceReviews**: 此测试验证的原始评论 ID
+- **priority**: 与对应需求相同的优先级
 
-## Important Rules:
-- Each step must test exactly ONE behavior.
-- Use real-world values (prices, durations, UI labels, error messages).
-- Cover authentication and authorization edge cases for features that require login.
-- Include at least one test case per acceptance criterion.
-- Source reviews should link back to the original user complaints — this proves we're testing the right things.
-- Generate at least 2 test cases per requirement: 1 happy path + 1 edge case minimum.
+## 重要规则：
+- 每个步骤必须只测试一个行为。
+- 使用真实数值（价格、时长、UI 标签、错误消息）。
+- 对需要登录的功能，覆盖认证和授权的边界情况。
+- 每条验收标准至少包含一条测试用例。
+- 每条需求至少生成 2 条测试用例：最少 1 条正常路径 + 1 条边界/异常情况。
+- 所有文本内容（title、steps、expectedResult）请用中文输出。
 
-Return the test cases as a valid JSON object with the specified schema.`;
+请以指定的 JSON 格式返回测试用例。`;
 
 function buildUserPrompt(requirements: Requirement[]): string {
   const reqText = requirements

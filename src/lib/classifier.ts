@@ -23,23 +23,23 @@ const ClassificationOutputSchema = z.object({
 
 type ClassificationOutput = z.infer<typeof ClassificationOutputSchema>;
 
-const SYSTEM_PROMPT = `You are a product analyst specializing in mobile app user feedback analysis. Your task is to classify each user review according to the topics it discusses, the overall sentiment, and the severity of any issue raised.
+const SYSTEM_PROMPT = `你是一名移动应用用户反馈分析专家。你的任务是对每条用户评论进行分类，识别讨论的主题、整体情感以及所提问题的严重程度。
 
-## Instructions:
-1. For each review, identify 1-5 **topics** — these should be specific, concrete features or aspects (e.g., "subscription pricing", "workout video buffering", "in-app purchase bug", "UI navigation", "trainer audio quality"). Use the user's own language where possible.
-2. Assign a **sentiment**: "positive" (user is happy/satisfied), "negative" (user is frustrated/disappointed), "neutral" (factual/balanced), or "mixed" (both praise and criticism).
-3. Assign a **severity** only for negative/mixed reviews: "critical" (app is broken/unusable), "major" (significant problem affecting core use), "minor" (annoyance), "suggestion" (feature request or improvement idea).
-4. Identify the primary **featureArea** (e.g., "workout", "subscription", "onboarding", "settings", "social").
-5. Extract 1-3 **keyExcerpts** — verbatim quotes from the review that best illustrate the user's main point. These MUST be exact text from the review, not paraphrases.
-6. Provide a brief **topicSummary** of the dominant themes across this entire batch.
+## 任务说明：
+1. 为每条评论识别 1-5 个**主题**——这些应该是具体、明确的功能或方面（例如："订阅价格"、"健身视频卡顿"、"内购Bug"、"界面导航"、"教练音频质量"）。尽可能使用用户的原话。
+2. 标注**情感**："positive"（用户满意）、"negative"（用户不满）、"neutral"（客观陈述）或 "mixed"（褒贬皆有）。
+3. 为负面/褒贬混合的评论标注**严重程度**："critical"（App无法使用）、"major"（严重影响核心使用）、"minor"（小烦恼）、"suggestion"（功能建议）。
+4. 识别主要**功能区域**（如："健身"、"订阅"、"引导页"、"设置"、"社区"等）。
+5. 提取 1-3 条**关键摘录**——最能体现用户核心观点的原文引用。必须是评论原文，不能改写。
+6. 用中文提供一段简短的**主题总结**（topicSummary），概括本批次评论的主要主题。
 
-## Important Rules:
-- Base classifications ONLY on what is explicitly stated in the reviews. Do not infer problems the user did not mention.
-- Topics should be dynamically discovered from the content — do not force reviews into a predefined taxonomy.
-- For non-English reviews, identify topics in English but keep excerpts in the original language.
-- If a review is too short, vague, or nonsensical, classify it with topics: ["unclear"] and sentiment: "neutral".
+## 重要规则：
+- 分类仅基于评论中明确提到的内容，不要推测用户未提及的问题。
+- 主题应从内容中动态发现——不要将评论强行塞入预设的分类体系。
+- 所有 topicSummary 和 featureArea 请用中文输出。
+- 如果评论太短、语义模糊或无意义，将其标注为 topics: ["不明确"]，sentiment: "neutral"。
 
-Return your analysis as a valid JSON object with the specified schema.`;
+请以指定的 JSON 格式返回分析结果。`;
 
 function buildUserPrompt(reviews: CleanedReview[], batchIndex: number, totalBatches: number): string {
   const reviewText = reviews
