@@ -121,9 +121,11 @@ export async function llmCall<T>(
     })
   );
 
-  const rawContent = response.choices[0]?.message?.content;
+  const choice = response.choices[0];
+  const rawContent = choice?.message?.content;
+  const finishReason = choice?.finish_reason;
   if (!rawContent) {
-    throw new Error("LLM returned empty response");
+    throw new Error(`LLM returned empty response (finish_reason: ${finishReason || "unknown"})`);
   }
 
   try {

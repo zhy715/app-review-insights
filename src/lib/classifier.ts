@@ -115,7 +115,7 @@ export async function classifyReviews(
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: buildUserPrompt(batch, i, totalBatches),
         temperature: 0.15,
-        maxTokens: 2048,
+        maxTokens: 4096,
       },
       ClassificationOutputSchema
     );
