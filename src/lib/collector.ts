@@ -188,7 +188,7 @@ async function fetchWithScraper(
   const store = await import("app-store-scraper");
 
   const allReviews: RawReview[] = [];
-  const maxPages = 10;
+  const maxPages = 3; // Limit pages to avoid timeouts
 
   for (let page = 1; page <= maxPages; page++) {
     let retries = 2;
