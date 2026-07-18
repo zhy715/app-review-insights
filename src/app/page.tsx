@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, Component, ReactNode } from "react";
+import { useState, useRef, useCallback, useEffect, Component, ReactNode } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AppInput } from "@/components/AppInput";
 import { ProgressPanel } from "@/components/ProgressPanel";
@@ -11,41 +11,17 @@ import { TestCaseView } from "@/components/TestCaseView";
 import { TraceabilityGraph } from "@/components/TraceabilityGraph";
 import type { PipelineState, PipelineResults, RawReview } from "@/lib/types";
 
-// ============================================================
-// Error Boundary
-// ============================================================
-class ErrorBoundary extends Component<
-  { children: ReactNode },
-  { error: Error | null }
-> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { error: null };
-  }
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  constructor(props: { children: ReactNode }) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error: Error) { return { error }; }
   render() {
     if (this.state.error) {
       return (
         <div className="p-8 max-w-2xl mx-auto mt-8">
           <div className="bg-red-50 border border-red-300 rounded-xl p-6 space-y-3">
             <h2 className="text-lg font-bold text-red-700">⚠️ 页面错误</h2>
-            <pre className="text-sm text-red-600 whitespace-pre-wrap bg-red-100 rounded p-3">
-              {this.state.error.message}
-            </pre>
-            <details>
-              <summary className="text-sm text-red-500 cursor-pointer">完整堆栈</summary>
-              <pre className="text-xs text-red-500 mt-2 whitespace-pre-wrap max-h-60 overflow-auto">
-                {this.state.error.stack}
-              </pre>
-            </details>
-            <button
-              onClick={() => this.setState({ error: null })}
-              className="text-sm bg-red-600 text-white px-4 py-1.5 rounded-lg"
-            >
-              重试
-            </button>
+            <pre className="text-sm text-red-600 whitespace-pre-wrap bg-red-100 rounded p-3">{this.state.error.message}</pre>
+            <button onClick={() => this.setState({ error: null })} className="text-sm bg-red-600 text-white px-4 py-1.5 rounded-lg">重试</button>
           </div>
         </div>
       );
@@ -54,100 +30,86 @@ class ErrorBoundary extends Component<
   }
 }
 
-// ============================================================
-// Main Page
-// ============================================================
 export default function Home() {
   const [state, setState] = useState<PipelineState>({
-    stage: "idle",
-    progress: 0,
-    message: "",
-    errors: [],
-    warnings: [],
+    stage: "idle", progress: 0, message: "", errors: [], warnings: [],
   });
   const [results, setResults] = useState<Partial<PipelineResults> | null>(null);
   const [activeTab, setActiveTab] = useState("findings");
-  const abortRef = useRef<AbortController | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
   const handleStart = useCallback(
     async (appUrl: string, analysisGoal: string, importData?: RawReview[]) => {
-      // Abort previous run
-      if (abortRef.current) {
-        abortRef.current.abort();
-      }
+      // Stop previous polling
+      if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
 
-      const abortController = new AbortController();
-      abortRef.current = abortController;
-
-      // Reset UI
-      setState({
-        stage: "collecting",
-        progress: 0,
-        message: "正在提交分析请求...",
-        errors: [],
-        warnings: [],
-      });
+      setState({ stage: "collecting", progress: 0, message: "正在提交分析请求...", errors: [], warnings: [] });
       setResults(null);
       setActiveTab("findings");
 
       try {
-        setState((prev) => ({
-          ...prev,
-          stage: "collecting",
-          progress: 10,
-          message: "正在采集和分析数据，请耐心等待...",
-        }));
-
-        const response = await fetch("/api/analyze", {
+        // Step 1: Start the job
+        const startRes = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            appUrl: appUrl || undefined,
-            analysisGoal,
-            importData,
-          }),
-          signal: abortController.signal,
+          body: JSON.stringify({ appUrl: appUrl || undefined, analysisGoal, importData }),
         });
 
-        if (!response.ok) {
-          let errMsg = `请求失败 (HTTP ${response.status})`;
+        if (!startRes.ok) {
+          const err = await startRes.json().catch(() => ({}));
+          throw new Error(err.error || `请求失败 (${startRes.status})`);
+        }
+
+        const { jobId } = await startRes.json();
+        if (!jobId) throw new Error("未收到任务 ID");
+
+        setState((prev) => ({ ...prev, stage: "collecting", progress: 5, message: "任务已创建，正在后台执行..." }));
+
+        // Step 2: Poll for results
+        pollingRef.current = setInterval(async () => {
           try {
-            const errData = await response.json();
-            errMsg = errData.error || errMsg;
-          } catch { /* ignore */ }
-          throw new Error(errMsg);
-        }
+            const pollRes = await fetch(`/api/analyze?jobId=${jobId}`);
+            if (!pollRes.ok) return;
 
-        const data = await response.json();
+            const job = await pollRes.json();
 
-        if (data.success && data.results) {
-          setResults(data.results);
-          setState({
-            stage: "complete",
-            progress: 100,
-            message: `🎉 分析完成! ${data.results.findings?.length || 0} 个发现, ${data.results.requirements?.length || 0} 条需求, ${data.results.testCases?.length || 0} 条测试用例`,
-            errors: [],
-            warnings: data.results.validation?.issues
-              ?.filter((i: { severity: string }) => i.severity === "warning")
-              ?.map((i: { message: string }) => i.message) || [],
-          });
-          setActiveTab("findings");
-        } else {
-          throw new Error("服务器返回了意外的数据格式");
-        }
+            setState({
+              stage: job.status === "running" ? "analyzing" : job.status,
+              progress: job.progress || 0,
+              message: job.message || "",
+              errors: job.error ? [{ stage: "error", message: job.error, timestamp: new Date().toISOString() }] : [],
+              warnings: [],
+            });
+
+            if (job.status === "complete" && job.results) {
+              clearInterval(pollingRef.current!);
+              pollingRef.current = null;
+              setResults(job.results);
+              setActiveTab("findings");
+            }
+
+            if (job.status === "error") {
+              clearInterval(pollingRef.current!);
+              pollingRef.current = null;
+            }
+          } catch {
+            // Poll failed, will retry next interval
+          }
+        }, 2000);
       } catch (err) {
-        if ((err as Error).name === "AbortError") return;
         const msg = err instanceof Error ? err.message : "未知错误";
-
-        // If RSS feed returned empty, suggest sample data
-        const isNoData = msg.includes("未找到评论") || msg.includes("No reviews");
-
+        const isNoData = msg.includes("未找到评论");
         setState((prev) => ({
           ...prev,
           stage: "error",
-          message: isNoData
-            ? `${msg}\n\n💡 提示：App Store RSS Feed 当前不可用，请点击「🧪 快速测试」使用内置样例数据。`
-            : msg,
+          message: isNoData ? `${msg}\n\n💡 提示：请点击「🧪 快速测试」使用内置样例数据。` : msg,
           errors: [...prev.errors, { stage: "error", message: msg, timestamp: new Date().toISOString() }],
         }));
       }
@@ -155,22 +117,15 @@ export default function Home() {
     []
   );
 
-  const isRunning =
-    state.stage !== "idle" &&
-    state.stage !== "complete" &&
-    state.stage !== "error";
+  const isRunning = state.stage !== "idle" && state.stage !== "complete" && state.stage !== "error";
 
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
           <header className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900">
-              🍎 App Review Insights
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              从用户评论到产品需求的完整分析工具
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900">🍎 App Review Insights</h1>
+            <p className="text-sm text-gray-500 mt-1">从用户评论到产品需求的完整分析工具</p>
           </header>
 
           <AppInput onStart={handleStart} isRunning={isRunning} />
