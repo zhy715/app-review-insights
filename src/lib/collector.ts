@@ -183,40 +183,54 @@ async function fetchWithScraper(
   const maxPages = 10;
 
   for (let page = 1; page <= maxPages; page++) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const scraper = store.default as any;
-      const result = await scraper.reviews({
-        id: parseInt(appId, 10), // MUST be number, not string!
-        country: country,
-        page: page,
-        sort: "mostRecent",
-      });
-
-      if (!result || result.length === 0) break;
-
-      for (const entry of result) {
-        allReviews.push({
-          id: String(entry.id || `scraped-${allReviews.length}`),
-          rating: entry.score || 3,
-          title: entry.title || "",
-          content: entry.text || "",
-          author: entry.userName || "Anonymous",
-          date: entry.updated || new Date().toISOString(),
-          version: entry.version || undefined,
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const scraper = store.default as any;
+        const result = await scraper.reviews({
+          id: parseInt(appId, 10),
+          country: country,
+          page: page,
+          sort: "mostRecent",
         });
-      }
 
-      // Delay between pages
-      if (page < maxPages && result.length > 0) {
-        await new Promise((r) => setTimeout(r, 2000));
+        if (!result || result.length === 0) {
+          break; // No more reviews
+        }
+
+        for (const entry of result) {
+          allReviews.push({
+            id: String(entry.id || `scraped-${allReviews.length}`),
+            rating: entry.score || 3,
+            title: entry.title || "",
+            content: entry.text || "",
+            author: entry.userName || "Anonymous",
+            date: entry.updated || new Date().toISOString(),
+            version: entry.version || undefined,
+          });
+        }
+
+        break; // Success, exit retry loop
+      } catch (err) {
+        retries--;
+        if (retries === 0) {
+          if (page === 1) {
+            console.warn(`app-store-scraper failed: ${err}`);
+          }
+          break;
+        }
+        // Backoff: 5s, 15s, 30s
+        const wait = (4 - retries) * 5000;
+        console.warn(`Scraper retry in ${wait / 1000}s...`);
+        await new Promise((r) => setTimeout(r, wait));
       }
-    } catch (err) {
-      if (page === 1) {
-        console.warn(`app-store-scraper also failed: ${err}`);
-      }
-      break;
     }
+
+    if (allReviews.length === 0 && page > 3) break; // No data after 3 pages = give up
+
+    // Longer delay to avoid rate limiting
+    await new Promise((r) => setTimeout(r, 3000 + Math.random() * 2000));
   }
 
   return allReviews;
