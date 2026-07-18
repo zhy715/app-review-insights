@@ -15,7 +15,7 @@ const ClassificationOutputSchema = z.object({
       sentiment: z.enum(["positive", "negative", "neutral", "mixed"]).optional().default("neutral"),
       severity: z.string().optional().default("minor"),
       featureArea: z.string().max(100).optional().default(""),
-      keyExcerpts: z.array(z.string()).max(3).optional().default([]),
+      keyExcerpts: z.array(z.string()).optional().default([]),
     })
   ).default([]),
   topicSummary: z.string().default(""),
