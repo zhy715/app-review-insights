@@ -184,11 +184,13 @@ async function fetchWithScraper(
 
   for (let page = 1; page <= maxPages; page++) {
     try {
-      const result = await store.default.reviews({
-        id: appId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const scraper = store.default as any;
+      const result = await scraper.reviews({
+        id: parseInt(appId, 10), // MUST be number, not string!
         country: country,
         page: page,
-        sort: store.default.sort.RECENT,
+        sort: "mostRecent",
       });
 
       if (!result || result.length === 0) break;

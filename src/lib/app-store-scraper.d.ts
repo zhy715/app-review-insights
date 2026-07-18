@@ -5,10 +5,10 @@ declare module "app-store-scraper" {
       HELPFUL: number;
     };
     function reviews(opts: {
-      id: string;
+      id: string | number;
       country?: string;
       page?: number;
-      sort?: number;
+      sort?: string;
     }): Promise<
       Array<{
         id: string;
