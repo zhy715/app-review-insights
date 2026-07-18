@@ -28,7 +28,7 @@ const FindingsOutputSchema = z.object({
       ]).optional().default("other"),
       severity: z.string().optional().default("minor"),
       supportingReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).min(1).optional().default([]),
-      supportingExcerpts: z.array(z.string()).min(1).max(5).optional().default([""]),
+      supportingExcerpts: z.array(z.string()).min(1).optional().default([""]),
       conflictingReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).optional().default([]),
       confidence: z.number().min(0).max(1).optional().default(0.5),
       uncertaintyNotes: z.string().optional(),
@@ -187,7 +187,7 @@ export async function analyzeFindings(
       systemPrompt: SYSTEM_PROMPT,
       userPrompt: buildUserPrompt(classifications, reviews, analysisGoal, appName),
       temperature: 0.15,
-      maxTokens: 8192,
+      maxTokens: 16384,
     },
     FindingsOutputSchema
   );
