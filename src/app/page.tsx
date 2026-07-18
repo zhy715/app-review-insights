@@ -138,10 +138,16 @@ export default function Home() {
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
         const msg = err instanceof Error ? err.message : "未知错误";
+
+        // If RSS feed returned empty, suggest sample data
+        const isNoData = msg.includes("未找到评论") || msg.includes("No reviews");
+
         setState((prev) => ({
           ...prev,
           stage: "error",
-          message: msg,
+          message: isNoData
+            ? `${msg}\n\n💡 提示：App Store RSS Feed 当前不可用，请点击「🧪 快速测试」使用内置样例数据。`
+            : msg,
           errors: [...prev.errors, { stage: "error", message: msg, timestamp: new Date().toISOString() }],
         }));
       }
