@@ -1,6 +1,13 @@
 # 🍎 App Review Insights — 用户评论分析与版本规划工具
 
+[![CI](https://github.com/zhy715/app-review-insights/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/zhy715/app-review-insights/actions/workflows/ci.yml)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](tsconfig.json)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](#)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fzhy715%2Fapp-review-insights&env=DEEPSEEK_API_KEY&envDescription=DeepSeek%20API%20key%20for%20LLM%20analysis&project-name=app-review-insights&repository-name=app-review-insights)
+
 从 iOS App Store 用户评论自动采集、AI 分析、到 PRD 和测试用例生成的**完整产品分析工作流**。
+
+> 没有 DeepSeek API Key？部署后或本地运行时，点击页面内的「📖 查看示例结果」按钮即可无需 Key 浏览完整的预计算分析结果。
 
 ## 📋 功能概述
 
@@ -19,6 +26,9 @@
 - **🔗 全链路追溯**：评论 → 发现 → 需求 → 测试用例 的完整追溯链
 - **📁 数据导入**：支持 JSON/CSV 格式的评论数据导入
 - **⚡ 实时进度**：异步任务 + 2 秒间隔轮询，UI 实时更新分析进度
+- **📊 证据充分性雷达图**：多维评估（样本量 / 版本覆盖 / 情感均衡 / 评分代表性 / 证据一致性 / 语言多样性）分析结果的证据可靠性
+- **🔍 交互式追溯探索器**：点击任意节点高亮其完整追溯链（评论 ↔ 发现 ↔ 需求 ↔ 测试用例）
+- **📥 交付物导出**：PRD 导出 Markdown，测试用例导出 Cucumber 兼容的 Gherkin `.feature` 文件
 
 ## 🚀 快速开始
 
@@ -43,6 +53,14 @@ npm run dev
 # 4. 打开浏览器
 # http://localhost:3000
 ```
+
+### 方式二：一键部署到 Vercel（推荐评审者使用）
+
+点击顶部「Deploy with Vercel」按钮，或直接访问：
+
+[一键部署](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fzhy715%2Fapp-review-insights&env=DEEPSEEK_API_KEY&envDescription=DeepSeek%20API%20key%20for%20LLM%20analysis&project-name=app-review-insights&repository-name=app-review-insights)
+
+Vercel 会自动 fork 仓库并部署（Next.js 是 Vercel 原生框架，零配置）。部署时填入 `DEEPSEEK_API_KEY` 即可启用完整 LLM 分析；无 Key 也可访问，点页面内「📖 查看示例结果」加载预计算数据浏览完整 UI。
 
 ### 环境变量
 
@@ -79,12 +97,14 @@ src/
 │   ├── ui/                     # shadcn/ui 基础组件
 │   ├── AppInput.tsx            # 输入面板
 │   ├── ProgressPanel.tsx       # 进度展示
+│   ├── AppMetadataCard.tsx     # App 元数据卡片（全量评分 vs 样本偏差）
 │   ├── ReviewTable.tsx         # 评论列表
 │   ├── ClassificationView.tsx  # 分类结果（中间交付物）
 │   ├── FindingsView.tsx        # 分析发现
-│   ├── PRDView.tsx             # PRD 展示（含版本规划）
-│   ├── TestCaseView.tsx        # 测试用例
-│   ├── TraceabilityGraph.tsx   # 追溯链路
+│   ├── EvidenceRadarChart.tsx  # 证据充分性雷达图
+│   ├── PRDView.tsx             # PRD 展示（含版本规划 + Markdown 导出）
+│   ├── TestCaseView.tsx        # 测试用例（含 Gherkin .feature 导出）
+│   ├── TraceabilityGraph.tsx   # 追溯链路 + 交互式追溯探索器
 │   └── DataImport.tsx          # 数据导入
 └── lib/
     ├── collector.ts            # RSS 评论采集
@@ -95,6 +115,7 @@ src/
     ├── prd-generator.ts        # LLM PRD 生成
     ├── test-generator.ts       # LLM 测试用例生成
     ├── validator.ts            # 追溯链校验 + 修订机制
+    ├── exporters.ts            # PRD Markdown / Gherkin 导出
     ├── llm.ts                  # DeepSeek 客户端
     ├── sse.ts                  # 通用工具（ID 生成、URL 解析）
     └── types.ts                # 类型定义
