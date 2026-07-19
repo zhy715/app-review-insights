@@ -6,6 +6,8 @@
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fzhy715%2Fapp-review-insights&env=DEEPSEEK_API_KEY&envDescription=DeepSeek%20API%20key%20for%20LLM%20analysis&project-name=app-review-insights&repository-name=app-review-insights)
 [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/zhy715/app-review-insights&env=DEEPSEEK_API_KEY)
 
+> 🌐 **Live Demo:** [https://earnest-kulfi-06e92f.netlify.app](https://earnest-kulfi-06e92f.netlify.app) — 无需 API Key，点击页面内「📖 查看示例结果」即可浏览完整 UI
+
 从 iOS App Store 用户评论自动采集、AI 分析、到 PRD 和测试用例生成的**完整产品分析工作流**。
 
 > 没有 DeepSeek API Key？部署后或本地运行时，点击页面内的「📖 查看示例结果」按钮即可无需 Key 浏览完整的预计算分析结果。
