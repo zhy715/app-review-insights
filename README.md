@@ -18,7 +18,7 @@
 - **📊 证据支撑**：每条发现包含源评论 ID、评论摘录、置信度、矛盾证据
 - **🔗 全链路追溯**：评论 → 发现 → 需求 → 测试用例 的完整追溯链
 - **📁 数据导入**：支持 JSON/CSV 格式的评论数据导入
-- **⚡ 实时进度**：SSE 流式推送分析进度，UI 实时更新
+- **⚡ 实时进度**：异步任务 + 2 秒间隔轮询，UI 实时更新分析进度
 
 ## 🚀 快速开始
 
@@ -59,8 +59,8 @@ npm run dev
 | 框架 | Next.js 16 (App Router) + TypeScript |
 | 样式 | Tailwind CSS v4 + shadcn/ui |
 | AI | DeepSeek API (`deepseek-chat`) — 通过 OpenAI SDK 调用 |
-| 数据采集 | Apple RSS Feed (`itunes.apple.com/rss/customerreviews`) |
-| 实时通信 | Server-Sent Events (SSE) — 基于 Web Streams API |
+| 数据采集 | RSS Feed + amp-api 自实现 + iTunes Lookup API（三层 fallback） |
+| 任务通信 | 异步 Job + HTTP 轮询（2s 间隔）— 后台执行长耗时管道，前端轮询状态 |
 | 数据校验 | Zod — 运行时 Schema 校验所有 LLM 输出 |
 
 ### 项目结构
@@ -69,7 +69,7 @@ npm run dev
 src/
 ├── app/
 │   ├── api/
-│   │   ├── analyze/route.ts    # 全流程分析 (SSE)
+│   │   ├── analyze/route.ts    # 全流程分析（异步 Job + 轮询）
 │   │   ├── reviews/route.ts    # 单独采集评论
 │   │   └── import/route.ts     # JSON/CSV 导入
 │   ├── layout.tsx
@@ -80,34 +80,51 @@ src/
 │   ├── AppInput.tsx            # 输入面板
 │   ├── ProgressPanel.tsx       # 进度展示
 │   ├── ReviewTable.tsx         # 评论列表
+│   ├── ClassificationView.tsx  # 分类结果（中间交付物）
 │   ├── FindingsView.tsx        # 分析发现
-│   ├── PRDView.tsx             # PRD 展示
+│   ├── PRDView.tsx             # PRD 展示（含版本规划）
 │   ├── TestCaseView.tsx        # 测试用例
 │   ├── TraceabilityGraph.tsx   # 追溯链路
 │   └── DataImport.tsx          # 数据导入
 └── lib/
-    ├── pipeline.ts             # 管道编排器
     ├── collector.ts            # RSS 评论采集
     ├── cleaner.ts              # 数据清洗
+    ├── goal-filter.ts          # 分析目标过滤（task #01）
     ├── classifier.ts           # LLM 主题分类
     ├── analyzer.ts             # LLM 问题分析
     ├── prd-generator.ts        # LLM PRD 生成
     ├── test-generator.ts       # LLM 测试用例生成
-    ├── validator.ts            # 追溯链校验
+    ├── validator.ts            # 追溯链校验 + 修订机制
     ├── llm.ts                  # DeepSeek 客户端
-    ├── sse.ts                  # SSE 工具
+    ├── sse.ts                  # 通用工具（ID 生成、URL 解析）
     └── types.ts                # 类型定义
 ```
 
 ## 📡 数据采集方式
 
-使用 Apple 官方提供的 **RSS Feed** 接口采集评论：
+> **任务重要提示**：*"Review data should not be collected by scraping only the visible content of the page. There are more appropriate ways to retrieve App Store review data; candidates are expected to explore them independently and explain their implementation."*
+
+本项目**不使用无头浏览器抓取页面可见内容**。评论数据通过 Apple 官方/半官方 API 采集，采用**三层 fallback 链**保证稳定性；app 元数据通过 iTunes Lookup API 并行获取（非评论源，用于标注样本偏差）。
+
+### 采集链路（三层 fallback）
+
+```
+RSS Feed (主源)  ──失败/为空──▶  amp-api 自实现 (fallback 1)  ──失败──▶  app-store-scraper (兜底)
+        │
+        │  并行
+        ▼
+iTunes Lookup API  ──▶  app 元数据（全量评分/版本/图标，非评论）
+```
+
+### 数据源详解
+
+**1. Apple RSS Customer Reviews Feed（主源）**
+
+Apple 官方提供的 JSON Feed，**非页面抓取**——直接返回结构化 JSON。
 
 ```
 https://itunes.apple.com/us/rss/customerreviews/page={n}/id={appId}/sortby=mostRecent/json
 ```
-
-### 特点
 
 | 方面 | 说明 |
 |------|------|
@@ -115,7 +132,51 @@ https://itunes.apple.com/us/rss/customerreviews/page={n}/id={appId}/sortby=mostR
 | **上限** | 每国 500 条（10 页 × 50 条） |
 | **内容** | 仅包含有文本的评论（不含纯星级评分） |
 | **速率** | 连续 ~30-40 次请求后返回 403，页面间隔 2 秒 |
-| **局限性** | 不含开发者回复、仅限最近 ~500 条、不含纯星级评分 |
+| **局限** | 不含开发者回复、仅限最近 ~500 条、某些 app 的 RSS 会返回空（Apple 已知 bug） |
+
+**2. amp-api 自实现（fallback 1）**
+
+Apple App Store 网页版内部调用的 API（`amp-api.apps.apple.com`）。本项目**自行实现 token 提取 + API 调用**，不依赖第三方库：
+
+1. 请求 `apps.apple.com/us/app/id{appId}` 页面 HTML
+2. 从 `<script name="web-experience-app/config/environment">` 的 JSON 中提取 `MEDIA_API.token`（带正则兜底）
+3. 带 `Authorization: Bearer {token}` 调用 `amp-api.apps.apple.com/v1/catalog/us/apps/{appId}/reviews`
+
+| 方面 | 说明 |
+|------|------|
+| **认证** | Bearer token（从 app 页面提取，非永久 key） |
+| **上限** | 每页最多 200 条，本项目限 3 页 = ~600 条 |
+| **优势** | 比 RSS 字段更全（含开发者回复）、单页量大、更稳定 |
+| **局限** | 非官方公开 API，token 机制可能随页面改版失效（故保留 scraper 兜底） |
+
+**3. app-store-scraper（兜底 fallback 2）**
+
+社区维护的 npm 包，内部同样调用 amp-api，但由社区跟进 Apple 页面改版。仅当我们的 amp-api token 提取失败时启用——作为"belt and suspenders"层。
+
+**4. iTunes Lookup API（元数据，非评论源）**
+
+```
+https://itunes.apple.com/lookup?id={appId}&country=us
+```
+
+返回 app 元数据：全量平均评分、评分总数、当前版本、图标、分类。与评论采集**并行**执行，用于：
+- 稳定获取 app 名称（不再依赖 RSS 第一条）
+- 在 UI 展示 app 上下文卡片
+- 在 Data Limitations 发现中标注**样本评分 vs 全量评分偏差**（如"样本均分 2.1 vs 全量 4.2，样本偏向差评"）
+
+### 为何不使用其他方法
+
+| 方法 | 不采用原因 |
+|------|-----------|
+| **无头浏览器（Playwright/Puppeteer）** | 任务明确反对"scraping visible page content"；且慢、重、易被 Apple 反爬封禁，对目标站点负载高 |
+| **App Store Connect API** | Apple 官方正式 API，字段最全；但需 App Store Connect JWT Key，且**只能查询自己拥有/管理的 app**——任务示例 app 非本人所有，无法使用 |
+| **商业 ASO 平台（AppFollow/data.ai/Sensor Tower）** | 数据最全、覆盖多国；但付费且需注册，任务场景下过重 |
+
+### 采集纪律
+
+- **区域约束**：只采集美区（`us`）评论，不回退到 `gb` 等其他区——任务要求美区数据，混区会污染分析
+- **速率控制**：RSS 页间 2 秒、amp-api 页间 1.5-2.5 秒、带 jitter，避免对 Apple 造成异常负载
+- **失败透明**：任一源失败时在日志记录并降级到下一层，最终无数据时回退到样例数据并在 UI 明确标注
 
 ## 🤖 AI 集成策略
 
@@ -205,7 +266,9 @@ RawReview ──→ CleanedReview ──→ ReviewClassification
 |------|------|
 | **直接使用 OpenAI SDK** 而非 Vercel AI SDK | DeepSeek 非 Vercel AI SDK 官方 provider；管道式分析场景不需要 chat UI 框架的抽象 |
 | **规则清洗 + AI 分析结合** | 去重、语言检测等用确定性规则（高效可靠）；主题发现、问题聚合用 LLM（需要语义理解） |
-| **SSE 而非 WebSocket** | 单向推送进度即可满足需求，SSE 更简单、HTTP 原生支持 |
+| **异步 Job + 轮询 而非 SSE/WebSocket** | 完整分析耗时 1-3 分钟，长连接易被代理/防火墙超时切断；后台 Job + 2s 轮询更稳健，且无状态恢复成本 |
+| **三层采集 fallback（RSS → amp-api → scraper）** | RSS 是官方 JSON Feed（非页面抓取）但 500 条上限；amp-api 自实现摆脱第三方依赖、字段更全、体现独立探索；scraper 兜底应对 Apple 页面改版导致 token 失效 |
+| **iTunes Lookup API 补元数据** | 稳定获取全量评分/版本/图标，用于 UI 上下文 + 标注样本偏差，命中任务"explain data source and limitations" |
 | **shadcn/ui** | 基于 Tailwind，组件可定制，开发速度快 |
 
 ### AI vs 确定性规则的阶段划分

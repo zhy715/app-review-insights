@@ -134,6 +134,186 @@
       "author": "QualityMatters",
       "date": "2024-06-01T19:30:00Z",
       "version": "3.2.1"
+    },
+    {
+      "id": "sample-016",
+      "rating": 1,
+      "title": "Cannot log in after update",
+      "content": "After updating to 3.2.2 I can't log in anymore. It says 'authentication failed' even though my password is correct. Reset password link doesn't send any email. Was working fine before the update.",
+      "author": "LockedOutUser",
+      "date": "2024-05-30T09:15:00Z",
+      "version": "3.2.2"
+    },
+    {
+      "id": "sample-017",
+      "rating": 5,
+      "title": "Social challenges keep me motivated",
+      "content": "The weekly challenges with friends are the best feature. Seeing my friends' progress pushes me to not skip workouts. The leaderboard is addictive in the best way. Keep adding more challenge types!",
+      "author": "SocialFitnessPro",
+      "date": "2024-05-29T17:45:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-018",
+      "rating": 2,
+      "title": "No onboarding for beginners",
+      "content": "First time opening the app and I was dumped straight into advanced workouts with no guidance. As a complete beginner I had no idea what to do. Needs a proper onboarding flow that asks about fitness level and goals.",
+      "author": "LostBeginner",
+      "date": "2024-05-28T11:20:00Z",
+      "version": "3.2.0"
+    },
+    {
+      "id": "sample-019",
+      "rating": 2,
+      "title": "Search is terrible",
+      "content": "Searching for 'yoga' returns random HIIT workouts. The search filters don't work — I filter by 'no equipment' and still get workouts that need dumbbells. How hard is it to make search actually filter results?",
+      "author": "FrustratedSearcher",
+      "date": "2024-05-27T13:30:00Z",
+      "version": "3.2.2"
+    },
+    {
+      "id": "sample-020",
+      "rating": 3,
+      "title": "Too many notifications",
+      "content": "I get 3-4 push notifications per day reminding me to work out. It's annoying and makes me want to turn them all off, but then I'd miss the challenge invites. Let me choose what notifications I receive instead of all-or-nothing.",
+      "author": "NotificationOverload",
+      "date": "2024-05-26T08:00:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-021",
+      "rating": 3,
+      "title": "Please add data export",
+      "content": "I want to export my workout history to a CSV so I can analyze my progress in my own spreadsheet. There's no way to do this in the app. I've asked support twice and got no response. Please add a data export feature.",
+      "author": "DataGeek",
+      "date": "2024-05-25T16:10:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-022",
+      "rating": 4,
+      "title": "整体不错但订阅太贵",
+      "content": "用了三个月，训练计划很专业，视频质量也不错。但是订阅价格比同类应用贵了不少，月费 ¥68 有点难以接受，希望能推出更便宜的入门套餐或者年费优惠。",
+      "author": "健身爱好者",
+      "date": "2024-05-24T10:00:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-023",
+      "rating": 1,
+      "title": "La aplicación se cierra sola",
+      "content": "Cada vez que intento ver un video de entrenamiento la aplicación se cierra después de unos minutos. He perdido mi progreso varias veces. Tengo un iPhone 13 con iOS 17.2. Por favor arreglen esto.",
+      "author": "UsuarioFrustrado",
+      "date": "2024-05-23T14:25:00Z",
+      "version": "3.2.0"
+    },
+    {
+      "id": "sample-024",
+      "rating": 5,
+      "title": "Meditation feature is a game changer",
+      "content": "The new meditation sessions added in 3.3.0 are fantastic. 10-minute guided sessions before bed have completely changed my sleep quality. Love that it's included in the subscription, not a separate purchase.",
+      "author": "MindfulAthlete",
+      "date": "2024-05-22T21:30:00Z",
+      "version": "3.3.0"
+    },
+    {
+      "id": "sample-025",
+      "rating": 4,
+      "title": "Recovery workouts are excellent",
+      "content": "After an injury I used the recovery and mobility workouts to ease back in. The instructor clearly explains modifications for each movement. Would love more post-injury specific programs though.",
+      "author": "ComebackTrail",
+      "date": "2024-05-21T12:45:00Z",
+      "version": "3.2.2"
+    },
+    {
+      "id": "sample-026",
+      "rating": 1,
+      "title": "Crashes mid workout",
+      "content": "Every time I start a workout video, the app crashes after about 5 minutes. This is so frustrating, I've lost my workout progress multiple times. iPhone 14, iOS 17.4.",
+      "author": "AnotherYogi",
+      "date": "2024-05-20T08:30:00Z",
+      "version": "3.2.0"
+    },
+    {
+      "id": "sample-027",
+      "rating": 2,
+      "title": "Sleep tracking is inaccurate",
+      "content": "The new sleep tracking in 3.3.0 says I only slept 4 hours when my Apple Health says 7.5 hours. It keeps logging me as awake whenever I move. The feature feels half-baked and rushed out.",
+      "author": "SleepSkeptic",
+      "date": "2024-05-19T07:15:00Z",
+      "version": "3.3.0"
+    },
+    {
+      "id": "sample-028",
+      "rating": 3,
+      "title": "Wish I could share workouts",
+      "content": "There's no way to share a workout with a friend who doesn't have the app. I want to send my favorite routine to my workout buddy but the only option is a generic 'invite' link. Add a proper share feature with workout preview.",
+      "author": "ShareableFitness",
+      "date": "2024-05-18T15:50:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-029",
+      "rating": 2,
+      "title": "App is slow to load",
+      "content": "Takes 15-20 seconds to load the workout library every time I open the app. My internet is fine, other apps load instantly. Seems like the app re-downloads everything instead of caching. Makes me not want to open it.",
+      "author": "ImpatientUser",
+      "date": "2024-05-17T18:00:00Z",
+      "version": "3.2.0"
+    },
+    {
+      "id": "sample-030",
+      "rating": 2,
+      "title": "Customer support never responds",
+      "content": "I've emailed support three times about a billing error over the past month. Not a single response. The in-app help link just opens a useless FAQ page. Worst customer service I've experienced from any app.",
+      "author": "IgnoredCustomer",
+      "date": "2024-05-16T11:30:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-031",
+      "rating": 4,
+      "title": "Need family sharing plan",
+      "content": "My partner and I both want to use this app but paying for two subscriptions is too expensive. Please add a family plan option — I'd happily pay 50% more for two accounts. Other apps have this, why not this one?",
+      "author": "FamilyFitDuo",
+      "date": "2024-05-15T09:45:00Z",
+      "version": "3.2.2"
+    },
+    {
+      "id": "sample-032",
+      "rating": 3,
+      "title": "Not enough women-specific programs",
+      "content": "Most programs seem designed for men. There are a few 'women's' workouts but they're mostly just lighter weights. Would love programs designed around menstrual cycle phases, pregnancy, and postpartum. Huge underserved market.",
+      "author": "StrongWomanFit",
+      "date": "2024-05-14T14:15:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-033",
+      "rating": 2,
+      "title": "Videos take up too much storage",
+      "content": "The app is using 4.5GB on my phone after a month of use. There's no option to set a cache size limit or auto-clean old videos. Had to delete the app and reinstall to reclaim space. Add storage management!",
+      "author": "StorageStruggle",
+      "date": "2024-05-13T19:20:00Z",
+      "version": "3.2.1"
+    },
+    {
+      "id": "sample-034",
+      "rating": 1,
+      "title": "Workout history sync broken",
+      "content": "My workout history only shows the last 7 days on my iPad, but on my iPhone I can see everything. Cross-device sync is completely broken. I've tried logging out and back in, didn't help. Lost weeks of progress data.",
+      "author": "SyncSufferer",
+      "date": "2024-05-12T10:10:00Z",
+      "version": "3.2.2"
+    },
+    {
+      "id": "sample-035",
+      "rating": 5,
+      "title": "Beautiful interface and smooth UX",
+      "content": "The redesign in the latest version is gorgeous. Smooth animations, intuitive navigation, and the new dark mode is perfect for early morning workouts. This is what a premium fitness app should look like.",
+      "author": "DesignLover",
+      "date": "2024-05-11T06:30:00Z",
+      "version": "3.3.0"
     }
   ]
 }
