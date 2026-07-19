@@ -4,6 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](tsconfig.json)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#)
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fzhy715%2Fapp-review-insights&env=DEEPSEEK_API_KEY&envDescription=DeepSeek%20API%20key%20for%20LLM%20analysis&project-name=app-review-insights&repository-name=app-review-insights)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/zhy715/app-review-insights&env=DEEPSEEK_API_KEY)
 
 从 iOS App Store 用户评论自动采集、AI 分析、到 PRD 和测试用例生成的**完整产品分析工作流**。
 
@@ -61,6 +62,14 @@ npm run dev
 [一键部署](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fzhy715%2Fapp-review-insights&env=DEEPSEEK_API_KEY&envDescription=DeepSeek%20API%20key%20for%20LLM%20analysis&project-name=app-review-insights&repository-name=app-review-insights)
 
 Vercel 会自动 fork 仓库并部署（Next.js 是 Vercel 原生框架，零配置）。部署时填入 `DEEPSEEK_API_KEY` 即可启用完整 LLM 分析；无 Key 也可访问，点页面内「📖 查看示例结果」加载预计算数据浏览完整 UI。
+
+### 方式三：一键部署到 Netlify
+
+点击顶部「Deploy to Netlify」按钮，或直接访问：
+
+[一键部署](https://app.netlify.com/start/deploy?repository=https://github.com/zhy715/app-review-insights&env=DEEPSEEK_API_KEY)
+
+Netlify 原生支持 Next.js 16 + Turbopack（[官方公告](https://www.netlify.com/changelog/next-js-16-is-ready-to-deploy-on-netlify)），通过 OpenNext adapter 零配置自动检测。仓库已含 `netlify.toml`（指定 Node 20 + build 命令）。部署时填入 `DEEPSEEK_API_KEY` 启用完整 LLM 分析；无 Key 也可访问，点页面内「📖 查看示例结果」加载预计算数据。
 
 ### 环境变量
 

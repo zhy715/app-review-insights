@@ -1,0 +1,17 @@
+# Netlify deployment configuration for Next.js 16
+# Next.js 16 is fully supported on Netlify with zero configuration.
+# The OpenNext adapter is automatically applied — no plugin declaration needed.
+# Turbopack, React Compiler, and enhanced caching APIs are supported.
+# See: https://www.netlify.com/changelog/next-js-16-is-ready-to-deploy-on-netlify
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # Next.js 16 requires Node.js 18.18+; pinning Node 20 LTS for stability.
+
+# Set DEEPSEEK_API_KEY in Netlify UI → Site settings → Environment variables.
+# Without it, the app still runs — visitors can click "📖 查看示例结果"
+# to load precomputed sample results and explore the full UI.
