@@ -2,11 +2,14 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import type { TestCase } from "@/lib/types";
+import type { TestCase, Requirement } from "@/lib/types";
+import { buildGherkinFeatures, downloadText } from "@/lib/exporters";
 
 interface TestCaseViewProps {
   testCases?: TestCase[];
+  requirements?: Requirement[];
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -16,7 +19,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   P3: "bg-gray-100 text-gray-600 border-gray-300",
 };
 
-export function TestCaseView({ testCases }: TestCaseViewProps) {
+export function TestCaseView({ testCases, requirements }: TestCaseViewProps) {
   if (!testCases || testCases.length === 0) {
     return (
       <Card>
@@ -58,6 +61,23 @@ export function TestCaseView({ testCases }: TestCaseViewProps) {
           <div className="text-lg font-bold">{byRequirement.size}</div>
           <div className="text-xs">覆盖需求</div>
         </div>
+      </div>
+
+      {/* Export toolbar */}
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            downloadText(
+              "test-cases.feature",
+              buildGherkinFeatures({ testCases, requirements }),
+              "text/plain"
+            )
+          }
+        >
+          📥 导出 Gherkin .feature
+        </Button>
       </div>
 
       {/* Test cases by requirement */}

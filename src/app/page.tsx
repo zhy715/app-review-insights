@@ -8,6 +8,7 @@ import { AppMetadataCard } from "@/components/AppMetadataCard";
 import { ReviewTable } from "@/components/ReviewTable";
 import { ClassificationView } from "@/components/ClassificationView";
 import { FindingsView } from "@/components/FindingsView";
+import { EvidenceRadarChart } from "@/components/EvidenceRadarChart";
 import { PRDView } from "@/components/PRDView";
 import { TestCaseView } from "@/components/TestCaseView";
 import { TraceabilityGraph } from "@/components/TraceabilityGraph";
@@ -184,17 +185,29 @@ export default function Home() {
                 />
               </TabsContent>
               <TabsContent value="findings" className="mt-4">
-                <FindingsView findings={results?.findings} />
+                <div className="space-y-4">
+                  <EvidenceRadarChart
+                    findings={results?.findings}
+                    cleanedReviews={results?.cleanedReviews}
+                    appMetadata={results?.appMetadata}
+                    validation={results?.validation}
+                  />
+                  <FindingsView findings={results?.findings} />
+                </div>
               </TabsContent>
               <TabsContent value="prd" className="mt-4">
                 <PRDView
+                  appName={results?.appName}
                   requirements={results?.requirements}
                   versionPlan={results?.versionPlan}
                   executiveSummary={results?.executiveSummary}
                 />
               </TabsContent>
               <TabsContent value="tests" className="mt-4">
-                <TestCaseView testCases={results?.testCases} />
+                <TestCaseView
+                  testCases={results?.testCases}
+                  requirements={results?.requirements}
+                />
               </TabsContent>
               <TabsContent value="trace" className="mt-4">
                 <TraceabilityGraph
@@ -203,6 +216,10 @@ export default function Home() {
                   findingCount={results?.findings?.length || 0}
                   requirementCount={results?.requirements?.length || 0}
                   testCaseCount={results?.testCases?.length || 0}
+                  reviews={results?.cleanedReviews}
+                  findings={results?.findings}
+                  requirements={results?.requirements}
+                  testCases={results?.testCases}
                 />
               </TabsContent>
             </Tabs>

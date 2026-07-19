@@ -2,10 +2,13 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import type { Requirement } from "@/lib/types";
+import { buildPRDMarkdown, downloadText } from "@/lib/exporters";
 
 interface PRDViewProps {
+  appName?: string;
   requirements?: Requirement[];
   versionPlan?: { version: string; theme: string; requirementTitles: string[]; rationale: string }[];
   executiveSummary?: string;
@@ -18,7 +21,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   P3: "bg-gray-100 text-gray-600 border-gray-300",
 };
 
-export function PRDView({ requirements, versionPlan, executiveSummary }: PRDViewProps) {
+export function PRDView({ appName, requirements, versionPlan, executiveSummary }: PRDViewProps) {
   if (!requirements || requirements.length === 0) {
     return (
       <Card>
@@ -40,6 +43,23 @@ export function PRDView({ requirements, versionPlan, executiveSummary }: PRDView
 
   return (
     <div className="space-y-6">
+      {/* Export toolbar */}
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            downloadText(
+              "PRD.md",
+              buildPRDMarkdown({ appName, executiveSummary, versionPlan, requirements }),
+              "text/markdown"
+            )
+          }
+        >
+          📥 导出 Markdown
+        </Button>
+      </div>
+
       {/* Executive Summary */}
       {executiveSummary && (
         <Card className="bg-blue-50 border-blue-200">
