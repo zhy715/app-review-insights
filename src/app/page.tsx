@@ -4,7 +4,9 @@ import { useState, useRef, useCallback, useEffect, Component, ReactNode } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AppInput } from "@/components/AppInput";
 import { ProgressPanel } from "@/components/ProgressPanel";
+import { AppMetadataCard } from "@/components/AppMetadataCard";
 import { ReviewTable } from "@/components/ReviewTable";
+import { ClassificationView } from "@/components/ClassificationView";
 import { FindingsView } from "@/components/FindingsView";
 import { PRDView } from "@/components/PRDView";
 import { TestCaseView } from "@/components/TestCaseView";
@@ -119,6 +121,29 @@ export default function Home() {
 
   const isRunning = state.stage !== "idle" && state.stage !== "complete" && state.stage !== "error";
 
+  // Load pre-computed sample results — lets reviewers without an API key
+  // see the full UI (classifications → findings → PRD → version plan →
+  // test cases → traceability graph) without invoking the LLM pipeline.
+  const handleLoadSampleResults = useCallback(async () => {
+    if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
+    try {
+      const res = await fetch("/data/sample-results.json");
+      if (!res.ok) throw new Error(`加载示例结果失败 (${res.status})`);
+      const data = await res.json();
+      setResults(data);
+      setState({ stage: "complete", progress: 100, message: "已加载预计算的示例结果（无需 API Key）", errors: [], warnings: [] });
+      setActiveTab("findings");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "未知错误";
+      setState((prev) => ({
+        ...prev,
+        stage: "error",
+        message: msg,
+        errors: [...prev.errors, { stage: "error", message: msg, timestamp: new Date().toISOString() }],
+      }));
+    }
+  }, []);
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50">
@@ -128,14 +153,22 @@ export default function Home() {
             <p className="text-sm text-gray-500 mt-1">从用户评论到产品需求的完整分析工具</p>
           </header>
 
-          <AppInput onStart={handleStart} isRunning={isRunning} />
+          <AppInput onStart={handleStart} isRunning={isRunning} onLoadSampleResults={handleLoadSampleResults} />
 
           <ProgressPanel state={state} />
+
+          {results && (
+            <AppMetadataCard
+              metadata={results?.appMetadata}
+              rawReviews={results?.rawReviews}
+            />
+          )}
 
           {results && (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="w-full justify-start overflow-x-auto">
                 <TabsTrigger value="reviews" className="text-sm">📊 评论数据</TabsTrigger>
+                <TabsTrigger value="classifications" className="text-sm">🏷️ 分类结果</TabsTrigger>
                 <TabsTrigger value="findings" className="text-sm">🔍 分析发现</TabsTrigger>
                 <TabsTrigger value="prd" className="text-sm">📋 PRD</TabsTrigger>
                 <TabsTrigger value="tests" className="text-sm">🧪 测试用例</TabsTrigger>
@@ -144,11 +177,21 @@ export default function Home() {
               <TabsContent value="reviews" className="mt-4">
                 <ReviewTable rawReviews={results?.rawReviews} cleanedReviews={results?.cleanedReviews} />
               </TabsContent>
+              <TabsContent value="classifications" className="mt-4">
+                <ClassificationView
+                  classifications={results?.classifications}
+                  cleanedReviews={results?.cleanedReviews}
+                />
+              </TabsContent>
               <TabsContent value="findings" className="mt-4">
                 <FindingsView findings={results?.findings} />
               </TabsContent>
               <TabsContent value="prd" className="mt-4">
-                <PRDView requirements={results?.requirements} />
+                <PRDView
+                  requirements={results?.requirements}
+                  versionPlan={results?.versionPlan}
+                  executiveSummary={results?.executiveSummary}
+                />
               </TabsContent>
               <TabsContent value="tests" className="mt-4">
                 <TestCaseView testCases={results?.testCases} />

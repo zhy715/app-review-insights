@@ -126,13 +126,62 @@ export function validateTraceability(
     }
   }
 
+  // === Revision mechanism (task #08) ===
+  // Don't just *flag* unsupported conclusions — actively revoke/downgrade them
+  // so they cannot leak into the final deliverable as if they were solid.
+  //
+  // Revocation rule: a requirement with NO evidence at all (neither source
+  // findings nor source reviews) is a hallucinated conclusion and is revoked.
+  const revokedRequirementIds = requirements
+    .filter(
+      (r) =>
+        r.sourceFindingIds.length === 0 && r.sourceReviewIds.length === 0
+    )
+    .map((r) => r.id);
+
+  const revokedSet = new Set(revokedRequirementIds);
+
+  // Test cases whose requirement was revoked are orphaned → revoke them too,
+  // otherwise the trace chain would point at a non-existent requirement.
+  const revokedTestCaseIds = testCases
+    .filter((tc) => revokedSet.has(tc.requirementId))
+    .map((tc) => tc.id);
+
+  // Downgrade rule: findings with weak evidence (confidence < 0.5) get marked
+  // as downgraded. They stay in the dataset (still informative) but carry an
+  // explicit warning so PMs treat them as hypotheses, not facts.
+  const downgradedFindingIds = findings
+    .filter((f) => f.confidence < 0.5)
+    .map((f) => f.id);
+
+  // Record the revisions as validation issues for transparency
+  for (const reqId of revokedRequirementIds) {
+    const req = requirements.find((r) => r.id === reqId);
+    issues.push({
+      type: "unsupported_conclusion",
+      severity: "error",
+      message: `Requirement "${req?.title || reqId}" revoked — no supporting findings or reviews`,
+      details:
+        "已自动剔除：该需求既无来源发现也无来源评论，属于无证据结论（任务 #08 修订机制）。",
+    });
+  }
+  for (const tcId of revokedTestCaseIds) {
+    issues.push({
+      type: "broken_link",
+      severity: "warning",
+      message: `Test case "${tcId}" revoked — its source requirement was revoked`,
+      details: "因来源需求被剔除，该测试用例同步剔除以保持追溯链完整。",
+    });
+  }
+
   const errors = issues.filter((i) => i.severity === "error");
   const unsupportedRequirements = requirements
     .filter(
       (r) =>
         r.isAssumption ||
         r.sourceFindingIds.length === 0 ||
-        lowConfidenceFindings.some((f) => r.sourceFindingIds.includes(f.id))
+        lowConfidenceFindings.some((f) => r.sourceFindingIds.includes(f.id)) ||
+        revokedSet.has(r.id)
     )
     .map((r) => r.id);
 
@@ -158,5 +207,8 @@ export function validateTraceability(
     missingLinks,
     totalReviews: rawReviews.length,
     coveredReviews: coveredReviewIds.size,
+    revokedRequirementIds,
+    revokedTestCaseIds,
+    downgradedFindingIds,
   };
 }

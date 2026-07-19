@@ -11,9 +11,10 @@ import type { RawReview } from "@/lib/types";
 interface AppInputProps {
   onStart: (appUrl: string, analysisGoal: string, importData?: RawReview[]) => void;
   isRunning: boolean;
+  onLoadSampleResults?: () => void;
 }
 
-export function AppInput({ onStart, isRunning }: AppInputProps) {
+export function AppInput({ onStart, isRunning, onLoadSampleResults }: AppInputProps) {
   const [appUrl, setAppUrl] = useState(
     "https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684"
   );
@@ -116,6 +117,16 @@ export function AppInput({ onStart, isRunning }: AppInputProps) {
               title="使用内置样例数据快速测试 AI 分析管道"
             >
               🧪 快速测试
+            </Button>
+          )}
+          {!isRunning && onLoadSampleResults && (
+            <Button
+              onClick={onLoadSampleResults}
+              variant="outline"
+              size="lg"
+              title="无需 API Key，直接查看预计算的完整分析结果（分类/发现/PRD/测试用例/追溯链）"
+            >
+              📖 查看示例结果
             </Button>
           )}
         </div>

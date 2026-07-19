@@ -16,7 +16,26 @@ export type PipelineStage =
   | "complete"
   | "error";
 
-// === Raw Review (from App Store RSS) ===
+// === App Metadata (from iTunes Lookup API) ===
+// Complements the review stream with full-store context: average rating across
+// ALL ratings (not just the sampled reviews), total rating count, current
+// version, and artwork. Lets us flag sample-vs-full-store bias in findings.
+export interface AppMetadata {
+  trackId: number;
+  trackName: string;
+  sellerName: string;
+  version: string; // current release version
+  averageUserRating: number; // 0-5, across all ratings ever submitted
+  averageUserRatingForCurrentVersion: number;
+  userRatingCount: number; // total ratings across all versions
+  userRatingCountForCurrentVersion: number;
+  primaryGenreName?: string;
+  contentAdvisoryRating?: string;
+  artworkUrl100?: string; // app icon (100px)
+  artworkUrl512?: string; // app icon (512px)
+}
+
+// === Raw Review (from App Store RSS / amp-api) ===
 export interface RawReview {
   id: string;
   rating: number; // 1-5
@@ -73,6 +92,14 @@ export interface Requirement {
   isAssumption: boolean;
 }
 
+// === Version Plan (grouping requirements into logical releases) ===
+export interface VersionPlanItem {
+  version: string; // e.g. "V1.0"
+  theme: string;
+  requirementTitles: string[];
+  rationale: string;
+}
+
 // === Test Case ===
 export interface TestCase {
   id: string; // e.g. "TC-001"
@@ -88,12 +115,15 @@ export interface TestCase {
 export interface PipelineResults {
   appName: string;
   appId: string;
+  appMetadata?: AppMetadata; // from iTunes Lookup API — full-store context
   analysisGoal: string;
   rawReviews: RawReview[];
   cleanedReviews: CleanedReview[];
   classifications: ReviewClassification[];
   findings: Finding[];
   requirements: Requirement[];
+  versionPlan: VersionPlanItem[];
+  executiveSummary: string;
   testCases: TestCase[];
   validation: ValidationResult;
 }
@@ -106,6 +136,10 @@ export interface ValidationResult {
   missingLinks: { from: string; to: string }[]; // broken traceability links
   totalReviews: number;
   coveredReviews: number; // reviews that are traced through to test cases
+  // Revision outcomes (task #08): items removed or downgraded by the validator
+  revokedRequirementIds: string[]; // requirements revoked due to zero evidence
+  revokedTestCaseIds: string[]; // test cases orphaned by revoked requirements
+  downgradedFindingIds: string[]; // findings downgraded due to weak evidence
 }
 
 export interface ValidationIssue {

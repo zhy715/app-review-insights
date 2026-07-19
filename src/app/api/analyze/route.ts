@@ -7,7 +7,8 @@ import { analyzeFindings } from "@/lib/analyzer";
 import { generatePRD } from "@/lib/prd-generator";
 import { generateTestCases } from "@/lib/test-generator";
 import { validateTraceability } from "@/lib/validator";
-import type { PipelineResults, AnalysisInput } from "@/lib/types";
+import { parseAnalysisGoal, applyGoalFilter } from "@/lib/goal-filter";
+import type { PipelineResults, AnalysisInput, AppMetadata } from "@/lib/types";
 
 // ============================================================
 // In-memory job store for async analysis
@@ -109,6 +110,7 @@ async function runPipeline(jobId: string, input: AnalysisInput) {
     let rawReviews;
     let appName = "Unknown App";
     let appId = "";
+    let appMetadata: AppMetadata | undefined;
 
     if (input.importData && input.importData.length > 0) {
       rawReviews = processImportedReviews(input.importData);
@@ -121,6 +123,7 @@ async function runPipeline(jobId: string, input: AnalysisInput) {
       rawReviews = result.reviews;
       appName = result.appName;
       appId = result.appId;
+      appMetadata = result.appMetadata;
     } else {
       job.status = "error";
       job.error = "无效的 App Store 链接";
@@ -147,13 +150,30 @@ async function runPipeline(jobId: string, input: AnalysisInput) {
     results.rawReviews = rawReviews;
     results.appName = appName;
     results.appId = appId;
-    updateJob(15, `✓ 已采集 ${rawReviews.length} 条评论`);
+    results.appMetadata = appMetadata;
+    updateJob(15, `✓ 已采集 ${rawReviews.length} 条评论${appMetadata ? `（${appMetadata.trackName} · 全量评分 ${appMetadata.averageUserRating.toFixed(1)}/5 · ${appMetadata.userRatingCount} 评分）` : ""}`);
 
     // Stage 2: Clean
     updateJob(20, "正在清洗数据...");
     const { reviews: cleanedReviews } = cleanReviews(rawReviews);
     results.cleanedReviews = cleanedReviews;
     updateJob(25, `✓ 清洗完成: ${cleanedReviews.length} 条有效评论`);
+
+    // Stage 2.5: Apply analysis-goal filter (task #01)
+    // The analysis goal must narrow the SCOPE of the data analysed, not just
+    // be appended to the LLM prompt. Parse it into concrete filters and run
+    // all downstream stages on the filtered subset.
+    const goalFilter = parseAnalysisGoal(input.analysisGoal);
+    let reviewsForAnalysis = cleanedReviews;
+    if (goalFilter.applied) {
+      reviewsForAnalysis = applyGoalFilter(cleanedReviews, goalFilter);
+      if (reviewsForAnalysis.length === 0) {
+        updateJob(27, `⚠ 分析目标过滤后无评论（${goalFilter.description}），回退到全部评论`);
+        reviewsForAnalysis = cleanedReviews;
+      } else if (reviewsForAnalysis.length < cleanedReviews.length) {
+        updateJob(27, `✓ 按分析目标过滤: ${cleanedReviews.length} → ${reviewsForAnalysis.length} 条（${goalFilter.description}）`);
+      }
+    }
 
     // Helper: retry an LLM stage with backoff
     const retryStage = async <T>(fn: () => Promise<T>, label: string, maxTries = 3): Promise<T> => {
@@ -176,14 +196,14 @@ async function runPipeline(jobId: string, input: AnalysisInput) {
 
     // Stage 3: Classify
     updateJob(30, "正在 AI 分类...");
-    const classificationResults = await retryStage(() => classifyReviews(cleanedReviews, 10), "AI 分类");
+    const classificationResults = await retryStage(() => classifyReviews(reviewsForAnalysis, 10), "AI 分类");
     const allClassifications = classificationResults.flatMap((r) => r.classifications);
     results.classifications = allClassifications;
     updateJob(45, `✓ 分类完成: ${allClassifications.length} 条`);
 
     // Stage 4: Analyze
     updateJob(50, "正在 AI 深度分析...");
-    const analysisResult = await retryStage(() => analyzeFindings(allClassifications, cleanedReviews, input.analysisGoal || "", appName), "AI 深度分析");
+    const analysisResult = await retryStage(() => analyzeFindings(allClassifications, reviewsForAnalysis, input.analysisGoal || "", appName, appMetadata), "AI 深度分析");
     results.findings = analysisResult.findings;
     updateJob(65, `✓ 发现 ${analysisResult.findings.length} 个问题`);
 
@@ -191,7 +211,11 @@ async function runPipeline(jobId: string, input: AnalysisInput) {
     updateJob(70, "正在生成 PRD...");
     const prdResult = await retryStage(() => generatePRD(analysisResult.findings, input.analysisGoal || "", appName), "PRD 生成");
     results.requirements = prdResult.requirements;
-    updateJob(80, `✓ 生成 ${prdResult.requirements.length} 条需求`);
+    // P0-1: persist versionPlan + executiveSummary so the UI can render them.
+    // Previously these were generated (tokens spent) and then thrown away.
+    results.versionPlan = prdResult.versionPlan;
+    results.executiveSummary = prdResult.executiveSummary;
+    updateJob(80, `✓ 生成 ${prdResult.requirements.length} 条需求（版本规划: ${prdResult.versionPlan.map((v) => v.version).join(", ")}）`);
 
     // Stage 6: Tests
     updateJob(85, "正在生成测试用例...");
@@ -202,8 +226,43 @@ async function runPipeline(jobId: string, input: AnalysisInput) {
     // Stage 7: Validate
     updateJob(95, "正在校验...");
     const validation = validateTraceability(rawReviews, cleanedReviews, allClassifications, analysisResult.findings, prdResult.requirements, testResult.testCases);
+
+    // P1-3: Apply revisions — actually remove/downgrade unsupported conclusions
+    // rather than only flagging them. This is the "revision mechanism" the
+    // task asks for (task #08).
+    if (validation.revokedRequirementIds.length > 0) {
+      const revokedReqSet = new Set(validation.revokedRequirementIds);
+      results.requirements = (results.requirements || []).filter(
+        (r) => !revokedReqSet.has(r.id)
+      );
+    }
+    if (validation.revokedTestCaseIds.length > 0) {
+      const revokedTcSet = new Set(validation.revokedTestCaseIds);
+      results.testCases = (results.testCases || []).filter(
+        (tc) => !revokedTcSet.has(tc.id)
+      );
+    }
+    if (validation.downgradedFindingIds.length > 0) {
+      const downgradedSet = new Set(validation.downgradedFindingIds);
+      results.findings = (results.findings || []).map((f) =>
+        downgradedSet.has(f.id)
+          ? {
+              ...f,
+              uncertaintyNotes:
+                `⚠ 证据不足（置信度 ${(f.confidence * 100).toFixed(0)}%），已降级为假设性结论。` +
+                (f.uncertaintyNotes ? ` ${f.uncertaintyNotes}` : ""),
+            }
+          : f
+      );
+    }
+
     results.validation = validation;
-    updateJob(98, `✓ 校验完成`);
+
+    const revisionMsg =
+      validation.revokedRequirementIds.length > 0 || validation.downgradedFindingIds.length > 0
+        ? `（已剔除 ${validation.revokedRequirementIds.length} 条无证据需求，降级 ${validation.downgradedFindingIds.length} 条低置信度发现）`
+        : "";
+    updateJob(98, `✓ 校验完成 ${revisionMsg}`);
 
     // Complete
     job.status = "complete";

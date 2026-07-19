@@ -5,6 +5,7 @@ import type {
   CleanedReview,
   ReviewClassification,
   Finding,
+  AppMetadata,
 } from "./types";
 
 // ============================================================
@@ -175,12 +176,14 @@ export async function analyzeFindings(
   classifications: ReviewClassification[],
   reviews: CleanedReview[],
   analysisGoal: string,
-  appName: string
+  appName: string,
+  appMetadata?: AppMetadata
 ): Promise<AnalysisResult> {
   // Also generate deterministic/statistical findings
   const statisticalFindings = generateStatisticalFindings(
     classifications,
-    reviews
+    reviews,
+    appMetadata
   );
 
   // LLM-driven analysis for nuanced findings
@@ -215,10 +218,16 @@ export async function analyzeFindings(
 /**
  * Generate deterministic/statistical findings from the data
  * These are clearly marked as source: "statistical"
+ *
+ * Exported for unit testing — the LLM-driven `analyzeFindings` wraps this
+ * plus a model call, so testing the statistical part in isolation gives
+ * deterministic coverage of the evidence-sufficiency and verbatim-excerpt
+ * rules without mocking the LLM.
  */
-function generateStatisticalFindings(
+export function generateStatisticalFindings(
   classifications: ReviewClassification[],
-  reviews: CleanedReview[]
+  reviews: CleanedReview[],
+  appMetadata?: AppMetadata
 ): Omit<Finding, "id">[] {
   const findings: Omit<Finding, "id">[] = [];
 
@@ -261,13 +270,26 @@ function generateStatisticalFindings(
     .slice(0, 5);
 
   if (topAreas.length > 0) {
+    // Build a review lookup so excerpts can be VERBATIM quotes, not synthesised
+    // descriptions like '"name" mentioned in N reviews' (which violated the
+    // "supportingExcerpts must be original text" rule in the system prompt).
+    const reviewMap = new Map(reviews.map((r) => [r.id, r]));
+
     findings.push({
       title: "Most Discussed Feature Areas",
       description: `The most frequently mentioned feature areas are: ${topAreas.map(([name, data]) => `${name} (${data.count} reviews)`).join(", ")}.`,
       category: "other",
       severity: "minor",
       supportingReviewIds: topAreas.flatMap(([, d]) => d.reviewIds),
-      supportingExcerpts: topAreas.map(([name, data]) => `"${name}" mentioned in ${data.count} reviews`),
+      supportingExcerpts: topAreas.map(([name, data]) => {
+        // Pick the first review that mentions this area and quote it verbatim
+        const sample = data.reviewIds
+          .map((id) => reviewMap.get(id))
+          .find((r): r is CleanedReview => Boolean(r));
+        return sample
+          ? sample.content.slice(0, 150)
+          : `${name} (${data.count} reviews)`; // last-resort fallback
+      }),
       conflictingReviewIds: [],
       confidence: 1.0,
       source: "statistical",
@@ -296,6 +318,90 @@ function generateStatisticalFindings(
       confidence: 1.0,
       source: "statistical",
       sampleCount: nonEnglishCount,
+    });
+  }
+
+  // Finding: Data Limitations & Evidence Sufficiency (task #05)
+  // Dynamically assess the limits of this dataset so downstream readers know
+  // how much weight to put on the other findings.
+  const limitations: string[] = [];
+
+  if (reviews.length < 30) {
+    limitations.push(
+      `样本量较小（仅 ${reviews.length} 条评论），统计性结论可能不稳定，建议扩大样本后复核`
+    );
+  }
+
+  // Version coverage — flag when some versions have very thin data
+  const versionCounts = new Map<string, number>();
+  for (const r of reviews) {
+    const v = r.version || "(未标注版本)";
+    versionCounts.set(v, (versionCounts.get(v) || 0) + 1);
+  }
+  const noVersionCount = versionCounts.get("(未标注版本)") || 0;
+  if (reviews.length > 0 && noVersionCount / reviews.length > 0.5) {
+    limitations.push(
+      `${((noVersionCount / reviews.length) * 100).toFixed(0)}% 的评论缺少版本信息，无法做版本维度分析`
+    );
+  }
+  const knownVersionCounts = [...versionCounts.entries()].filter(
+    ([v]) => v !== "(未标注版本)"
+  );
+  if (knownVersionCounts.length > 1) {
+    const minCount = Math.min(...knownVersionCounts.map(([, c]) => c));
+    if (minCount < 3) {
+      limitations.push(
+        `部分版本评论数过少（最少仅 ${minCount} 条），版本间对比结论需谨慎对待`
+      );
+    }
+  }
+
+  // Sentiment skew — a heavily skewed dataset may not represent typical users
+  const negCount = reviews.filter((r) => r.rating <= 2).length;
+  if (reviews.length > 0 && negCount / reviews.length > 0.7) {
+    limitations.push(
+      `负面评论占比过高（${((negCount / reviews.length) * 100).toFixed(0)}%），样本可能偏向活跃抱怨用户，不代表整体用户感受`
+    );
+  }
+
+  // Sample-vs-full-store rating bias (task #05).
+  // When iTunes Lookup gives us the full-store average rating, a large gap vs
+  // the sample average means the collected reviews do not represent the overall
+  // user base — RSS/amp-api tend to surface recent reviews, which skew negative
+  // right after a bad release. This is exactly the kind of "data limitation"
+  // the task wants flagged dynamically rather than assumed.
+  if (appMetadata && reviews.length > 0) {
+    const sampleAvg = avgRating;
+    const fullAvg = appMetadata.averageUserRating;
+    const gap = Math.abs(sampleAvg - fullAvg);
+    if (gap >= 0.7) {
+      const direction = sampleAvg < fullAvg ? "偏低" : "偏高";
+      limitations.push(
+        `样本平均评分 ${sampleAvg.toFixed(1)} 与 App Store 全量评分 ${fullAvg.toFixed(1)} 偏差 ${gap.toFixed(1)} 分（样本${direction}），采集到的评论可能不代表整体用户感受（全量 ${appMetadata.userRatingCount} 条评分）`
+      );
+    }
+    // Flag when the sample is a tiny fraction of the full-store ratings.
+    const coverage = reviews.length / Math.max(appMetadata.userRatingCount, 1);
+    if (coverage < 0.01 && appMetadata.userRatingCount > 1000) {
+      limitations.push(
+        `样本仅覆盖全量 ${appMetadata.userRatingCount} 条评分的 ${(coverage * 100).toFixed(2)}%，定量结论需结合全量评分综合判断`
+      );
+    }
+  }
+
+  if (limitations.length > 0) {
+    findings.push({
+      title: "Data Limitations & Evidence Sufficiency",
+      description: `本次分析的数据局限性：${limitations.join("；")}。请在解读其他发现时将这些限制纳入考量。`,
+      category: "other",
+      severity: "minor",
+      supportingReviewIds: [],
+      supportingExcerpts: [],
+      conflictingReviewIds: [],
+      confidence: 1.0,
+      source: "statistical",
+      sampleCount: reviews.length,
+      uncertaintyNotes: limitations.join("；"),
     });
   }
 

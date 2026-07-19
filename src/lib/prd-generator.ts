@@ -14,6 +14,10 @@ const PRDOutputSchema = z.object({
       title: z.string().max(200),
       description: z.string().max(2000).optional().default(""),
       priority: z.enum(["P0", "P1", "P2", "P3"]).optional().default("P2"),
+      // Prefer sourceFindingIds (deterministic reverse lookup by ID).
+      // sourceFindingTitles kept as a fallback for models that ignore the
+      // ID instruction — resolved against the finding list in code.
+      sourceFindingIds: z.array(z.union([z.string(), z.number()]).transform(String)).optional().default([]),
       sourceFindingTitles: z.array(z.string()).optional().default([]),
       sourceReviewIds: z.array(z.union([z.string(), z.number()]).transform(String)).optional().default([]),
       acceptance: z.array(z.string().max(500)).optional().default(["验收通过"]),
@@ -42,7 +46,8 @@ const SYSTEM_PROMPT = `你是一名资深产品经理，正在基于用户反馈
    - **title**: 清晰、具体的中文需求名称
    - **description**: 需要构建/变更什么以及为什么。包含用户反馈的上下文。使用"用户反馈……"来确保证据基础。用中文撰写。
    - **priority**: P0（必须修复——严重Bug、核心流程中断）、P1（应该修复——重大摩擦、高影响）、P2（可以修复——小烦恼、边缘场景）、P3（未来——增强、优化）
-   - **sourceFindingTitles**: 此需求对应的发现标题（使用确切的发现标题）
+   - **sourceFindingIds**: 此需求对应的发现 ID（使用确切的发现 ID，如 "F-001"、"F-002"，见上方输入中的 [F-xxx] 标记）。这是首选方式，比用标题更可靠。
+   - **sourceFindingTitles**: 仅当无法确定 ID 时作为兜底，填入对应的发现标题（将做模糊匹配）。
    - **sourceReviewIds**: 支撑此需求的原始评论 ID（来自发现的 supportingReviewIds）
    - **acceptance**: 2-5 条可衡量的验收标准。使用具体的、可测试的语言（例如："用户可在 3 秒内完成视频加载"，而非"性能更好"）。用中文。
    - **version**: 所属版本（V1.0、V1.1、V2.0）
@@ -128,14 +133,27 @@ export async function generatePRD(
     PRDOutputSchema
   );
 
-  // Map finding titles to finding IDs
-  const findingMap = new Map(findings.map((f) => [f.title, f]));
+  // Build lookup maps for deterministic reverse-filling of finding IDs.
+  // Primary: exact ID match (robust — IDs are short, unambiguous tokens the
+  // LLM is told to copy verbatim from the [F-xxx] markers in the prompt).
+  // Fallback: title match (normalised) for models that ignore the ID rule.
+  const findingById = new Map(findings.map((f) => [f.id, f]));
+  const findByTitle = new Map(
+    findings.map((f) => [normaliseTitle(f.title), f])
+  );
 
   const requirements: Requirement[] = output.requirements.map((r, i) => {
-    // Resolve finding titles to IDs
-    const sourceFindingIds = r.sourceFindingTitles
-      .map((title) => findingMap.get(title)?.id)
-      .filter((id): id is string => id !== undefined);
+    const resolved = new Set<string>();
+    // 1. Resolve by ID (preferred path — deterministic)
+    for (const id of r.sourceFindingIds) {
+      if (findingById.has(id)) resolved.add(id);
+    }
+    // 2. Resolve by title (fallback for non-compliant LLM output)
+    for (const title of r.sourceFindingTitles) {
+      const hit = findByTitle.get(normaliseTitle(title));
+      if (hit) resolved.add(hit.id);
+    }
+    const sourceFindingIds = [...resolved];
 
     return {
       id: generateId("REQ", i),
@@ -155,4 +173,13 @@ export async function generatePRD(
     versionPlan: output.versionPlan,
     executiveSummary: output.executiveSummary,
   };
+}
+
+/**
+ * Normalise a title for fuzzy matching: trim, collapse whitespace, lowercase.
+ * Used only as a fallback when the LLM ignores the "use finding ID" rule and
+ * returns titles instead — exact ID matching is always attempted first.
+ */
+function normaliseTitle(title: string): string {
+  return title.trim().toLowerCase().replace(/\s+/g, " ");
 }

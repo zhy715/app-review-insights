@@ -11,7 +11,11 @@ import type { Requirement, TestCase } from "./types";
 const TestCasesOutputSchema = z.object({
   testCases: z.array(
     z.object({
-      requirementTitle: z.string(),
+      // Prefer requirementId (deterministic reverse lookup by ID).
+      // requirementTitle kept as a fallback for models that ignore the
+      // ID instruction — resolved against the requirement list in code.
+      requirementId: z.union([z.string(), z.number()]).transform(String).optional().default(""),
+      requirementTitle: z.string().optional().default(""),
       title: z.string().max(200),
       steps: z.array(z.string().max(500)).min(1).optional().default(["验证功能"]),
       expectedResult: z.string().max(1000).optional().default("符合预期"),
@@ -34,7 +38,8 @@ const SYSTEM_PROMPT = `你是一名 QA 工程师，正在为移动应用 PRD 设
 3. **异常路径**: 依赖失败或输入无效时会发生什么
 
 ## 每条测试用例需提供：
-- **requirementTitle**: 所测试的精确需求标题
+- **requirementId**: 所测试的需求 ID（使用确切的需求 ID，如 "REQ-001"、"REQ-002"，见上方输入中的 [REQ-xxx] 标记）。这是首选方式，比用标题更可靠。
+- **requirementTitle**: 仅当无法确定 ID 时作为兜底，填入对应的需求标题（将做模糊匹配）。
 - **title**: 描述性的中文测试用例标题
 - **steps**: Given/When/Then 步骤数组。必须具体——使用具体数值，而非占位符。
   - 正确："Given 用户在订阅页面，显示'月度高级版'计划价格为 ¥68.00"
@@ -83,8 +88,14 @@ export interface TestGenResult {
 export async function generateTestCases(
   requirements: Requirement[]
 ): Promise<TestGenResult> {
-  // Build a map for requirement title → ID resolution
-  const reqMap = new Map(requirements.map((r) => [r.title, r]));
+  // Build lookup maps for deterministic reverse-filling of requirement IDs.
+  // Primary: exact ID match. Fallback: normalised title match for models that
+  // ignore the ID rule. Eliminates the "REQ-UNKNOWN" orphan problem that
+  // arose when the LLM slightly reworded the requirement title.
+  const reqById = new Map(requirements.map((r) => [r.id, r]));
+  const reqByTitle = new Map(
+    requirements.map((r) => [normaliseTitle(r.title), r])
+  );
 
   const output = await llmCallWithSchema<TestCasesOutput>(
     {
@@ -97,7 +108,12 @@ export async function generateTestCases(
   );
 
   const testCases: TestCase[] = output.testCases.map((tc, i) => {
-    const req = reqMap.get(tc.requirementTitle);
+    // 1. Resolve by ID (preferred path — deterministic)
+    let req = tc.requirementId ? reqById.get(tc.requirementId) : undefined;
+    // 2. Resolve by title (fallback for non-compliant LLM output)
+    if (!req && tc.requirementTitle) {
+      req = reqByTitle.get(normaliseTitle(tc.requirementTitle));
+    }
     return {
       id: generateId("TC", i),
       requirementId: req?.id || "REQ-UNKNOWN",
@@ -110,4 +126,12 @@ export async function generateTestCases(
   });
 
   return { testCases };
+}
+
+/**
+ * Normalise a title for fuzzy matching: trim, collapse whitespace, lowercase.
+ * Used only as a fallback when the LLM ignores the "use requirement ID" rule.
+ */
+function normaliseTitle(title: string): string {
+  return title.trim().toLowerCase().replace(/\s+/g, " ");
 }
